@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> e2ba483 (chore: force redeploy to fix stale production build)
 // Vercel Serverless Function — /api/details (GET) v2
 const CINEMETA_META = "https://v3-cinemeta.strem.io/meta/";
 
