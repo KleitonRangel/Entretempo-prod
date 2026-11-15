@@ -2,6 +2,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
   "version": 2,
+<<<<<<< HEAD
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
@@ -22,16 +23,19 @@
 }
 >>>>>>> bfc2074 (fix: remove repositoryUrl from vercel.json)
 =======
+=======
+  "buildCommand": "",
+>>>>>>> 4329469 (feat: rewrite API as Vercel Node.js functions (.js))
   "framework": "vite",
   "functions": {
-    "api/search.ts": {
-      "runtime": "nodejs20"
+    "api/search.js": {
+      "runtime": "nodejs20.x"
     },
-    "api/details.ts": {
-      "runtime": "nodejs20"
+    "api/details.js": {
+      "runtime": "nodejs20.x"
     },
-    "api/image.ts": {
-      "runtime": "nodejs20"
+    "api/image.js": {
+      "runtime": "nodejs20.x"
     }
 <<<<<<< HEAD
   }
@@ -39,15 +43,6 @@
 >>>>>>> a87178f (feat: add Vercel Functions for API (search, details, image proxy))
 =======
   },
-  "routes": [
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    }
-  ],
   "rewrites": [
     {
       "source": "/(.*)",
