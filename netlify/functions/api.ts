@@ -21,7 +21,7 @@ function jsonResponse(data: unknown, statusCode = 200, extraHeaders: Record<stri
   return new Response(JSON.stringify(data), { status: statusCode, headers });
 }
 
-export async function handler(event: { path: string; httpMethod: string }): Promise<Response> {
+async function apiHandler(event: { path: string; httpMethod: string }): Promise<Response> {
   const { path, httpMethod } = event;
   const query = parseQuery(path);
 
@@ -172,3 +172,5 @@ export async function handler(event: { path: string; httpMethod: string }): Prom
   // Not found
   return jsonResponse({ error: `Rota não encontrada: ${path}` }, 404);
 }
+
+export default apiHandler;
