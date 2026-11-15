@@ -16,8 +16,11 @@
 >>>>>>> 5ab6658 (fix: inline all API providers into single serverless function)
 =======
   "version": 2,
+  "functions": {
+    "api/index.ts": {}
+  },
   "routes": [
-    { "src": "/api/.*", "dest": "/api/index.mjs" },
+    { "src": "/api/.*", "dest": "/api/index.ts" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 >>>>>>> 0f5dded (fix: rename api/index.js to index.mjs for ESM support on Vercel)
