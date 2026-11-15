@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 
+<<<<<<< HEAD
+=======
+// Mock fetch before importing the API modules
+const originalFetch = global.fetch;
+
+>>>>>>> cd6e895 (test: adicionar 11 testes regressivos para formato de resposta da API)
 afterEach(() => {
   vi.restoreAllMocks();
 });
