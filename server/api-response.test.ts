@@ -1,14 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-// Mock fetch before importing the API modules
-const originalFetch = global.fetch;
-
->>>>>>> cd6e895 (test: adicionar 11 testes regressivos para formato de resposta da API)
-=======
->>>>>>> 06840a5 (fix: corrigir erros de TypeScript que impediam a build no Vercel)
 afterEach(() => {
   vi.restoreAllMocks();
 });
