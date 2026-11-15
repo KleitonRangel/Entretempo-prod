@@ -6,6 +6,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   "version": 2,
 <<<<<<< HEAD
   "rewrites": [
@@ -20,6 +21,9 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 >>>>>>> 0f5dded (fix: rename api/index.js to index.mjs for ESM support on Vercel)
+=======
+  "version": 2
+>>>>>>> 4812895 (test: no rewrites)
 }
 =======
 =======
