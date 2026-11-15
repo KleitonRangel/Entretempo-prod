@@ -144,6 +144,8 @@ export function normalizeItem(raw: unknown, index = 0): Item | null {
   };
 }
 
+// ─── localStorage (síncrono — interface original mantida) ────────────
+
 export function loadItems(): Item[] | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -181,6 +183,109 @@ export function clearStoredItems(): void {
     // Sem problema: o estado em memória continua funcionando.
   }
 }
+
+// ─── Supabase (assíncrono — sync sob demanda) ────────────────────────
+
+let _supabaseAvailable = false;
+
+async function getSupabaseClient() {
+  const { supabase } = await import("./supabase");
+  return supabase;
+}
+
+export async function isSupabaseConfigured(): Promise<boolean> {
+  if (_supabaseAvailable) return true;
+  try {
+    const client = await getSupabaseClient();
+    if (!client || !import.meta.env.VITE_SUPABASE_URL) return false;
+    // Quick ping to verify connection
+    await client.from("items").select("id").limit(1).maybeSingle();
+    _supabaseAvailable = true;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function syncToSupabase(items: Item[]): Promise<boolean> {
+  const ok = await isSupabaseConfigured();
+  if (!ok) return false;
+
+  try {
+    const client = await getSupabaseClient();
+    const dbItems = items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      status: item.status,
+      order: item.order,
+      in_progress: item.inProgress,
+      cover_url: item.coverUrl,
+      cover_source: item.coverSource,
+      source: item.source,
+      external_id: item.externalId,
+      external_url: item.externalUrl,
+      year: item.year,
+      description: item.description,
+      game_times: item.gameTimes,
+      game_time_mode: item.gameTimeMode,
+      episodes: item.episodes,
+      episode_minutes: item.episodeMinutes,
+      seasons: item.seasons,
+      season_episodes: item.seasonEpisodes,
+      selected_seasons: item.selectedSeasons,
+      speed: item.speed,
+      runtime: item.runtime,
+      created_at: item.createdAt,
+      updated_at: item.updatedAt,
+      finished_at: item.finishedAt,
+      discarded_at: item.discardedAt,
+      sample: item.sample ?? false,
+    }));
+
+    const { error } = await client.from("items").upsert(dbItems);
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.warn("Falha ao sincronizar com o Supabase:", err);
+    return false;
+  }
+}
+
+export async function loadFromSupabase(): Promise<Item[]> {
+  const ok = await isSupabaseConfigured();
+  if (!ok) return [];
+
+  try {
+    const client = await getSupabaseClient();
+    const { data, error } = await client
+      .from("items")
+      .select("*")
+      .order("order", { ascending: true });
+
+    if (error || !Array.isArray(data)) return [];
+
+    return data.map(normalizeItem).filter((item): item is Item => item !== null);
+  } catch {
+    return [];
+  }
+}
+
+export async function clearSupabase(): Promise<boolean> {
+  const ok = await isSupabaseConfigured();
+  if (!ok) return false;
+
+  try {
+    const client = await getSupabaseClient();
+    // Delete all items (no filter needed — just truncate the table for this user)
+    await client.from("items").delete().gt("id", ""); // no-op filter, but works
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ─── Export / Import ────────────────────────────────────────────────
 
 export function exportItems(items: Item[]): string {
   return JSON.stringify({ app: "entretempo", version: 1, exportedAt: new Date().toISOString(), items }, null, 2);
