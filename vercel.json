@@ -1,11 +1,15 @@
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
   "version": 2,
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
 =======
+=======
+  "version": 2,
+>>>>>>> 1c45fe4 (fix: update vercel.json with explicit routes and nodejs20 runtime)
   "buildCommand": "npm run build",
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -21,14 +25,34 @@
   "framework": "vite",
   "functions": {
     "api/search.ts": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs20"
     },
     "api/details.ts": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs20"
     },
     "api/image.ts": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs20"
     }
+<<<<<<< HEAD
   }
 }
 >>>>>>> a87178f (feat: add Vercel Functions for API (search, details, image proxy))
+=======
+  },
+  "routes": [
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+>>>>>>> 1c45fe4 (fix: update vercel.json with explicit routes and nodejs20 runtime)
