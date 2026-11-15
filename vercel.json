@@ -2,6 +2,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   "version": 2,
 <<<<<<< HEAD
   "rewrites": [
@@ -44,6 +45,10 @@
     "api/*.js": {}
 >>>>>>> 20d8560 (fix: remove invalid runtime version from vercel.json)
   },
+=======
+  "framework": "vite",
+  "buildCommand": "",
+>>>>>>> ba479d9 (fix: remove functions from vercel.json - test SPA only)
   "rewrites": [
     {
       "source": "/(.*)",
