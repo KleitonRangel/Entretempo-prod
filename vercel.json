@@ -1,6 +1,7 @@
 {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   "version": 2,
 <<<<<<< HEAD
   "rewrites": [
@@ -27,8 +28,10 @@
   "buildCommand": "",
 >>>>>>> 4329469 (feat: rewrite API as Vercel Node.js functions (.js))
   "framework": "vite",
+=======
+>>>>>>> 491d99f (test: add minimal api/health.js to verify function routing)
   "functions": {
-    "api/index.js": {
+    "api/*.js": {
       "runtime": "nodejs20.x"
     }
 <<<<<<< HEAD
@@ -39,7 +42,7 @@
   },
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
