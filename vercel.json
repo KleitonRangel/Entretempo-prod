@@ -4,11 +4,15 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   "version": 2,
 <<<<<<< HEAD
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
+=======
+  "version": 2
+>>>>>>> 5ab6658 (fix: inline all API providers into single serverless function)
 }
 =======
 =======
