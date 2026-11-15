@@ -16,12 +16,31 @@ Somos uma equipe de desenvolvimento focado em criar aplicações web modernas. N
 O teste deve cobrir o caso exato que falhou para garantir que não se repita em futuras alterações.
 Exemplo: quando a API `/api/details` retornava dados sem envolver em `{ details }`, o frontend crashava ao acessar `.runtime`. O bug foi corrigido e um teste regressivo foi adicionado em `server/api-response.test.ts` para validar o formato de resposta da API.
 
+## Configuração do Git (OBRIGATÓRIO — prevenir bloqueio de deploy)
+
+**Antes de qualquer commit, verifique a autoria:**
+
+```bash
+git config user.name    # deve ser "Kleiton Rangel"
+git config user.email   # deve ser KleitonRangel@users.noreply.github.com
+```
+
+Se estiver diferente, corrija ANTES de commitar:
+
+```bash
+git config --global user.name "Kleiton Rangel"
+git config --global user.email "KleitonRangel@users.noreply.github.com"
+```
+
+> ⚠️ **NUNCA use `SEU_NOME` ou `SEU_EMAIL`** — o Vercel bloqueia deploys se a autoria do commit não corresponder à conta GitHub.
+
 ## Deploy no Vercel
 
-1. Inicialize o Git: `git init → git add . → git commit → git branch -M main`
-2. Configure Supabase em `.env.local` com credenciais reais
-3. Importe na Vercel e configure a integração com Supabase
-4. Rode `npm test` para confirmar que nada quebrou
+1. Configure o Git corretamente (veja seção acima)
+2. Faça as alterações: `git add . → git commit -m "descrição"`
+3. Force push para main: `git push --force origin main`
+4. O Vercel detecta automaticamente o novo commit e inicia a build
+5. Rode `npm test` localmente ANTES de fazer push para evitar builds falhas
 
 ## Monitoramento de Deploy (OBRIGATÓRIO)
 
