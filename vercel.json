@@ -52,12 +52,16 @@
 >>>>>>> ba479d9 (fix: remove functions from vercel.json - test SPA only)
 =======
   "version": 2,
+  "buildCommand": "node scripts/build-api.js && npm run build",
   "functions": {
-    "api/index.js": {}
+    "dist-api/index.js": {}
   },
 >>>>>>> 23721fa (fix: proper vercel.json with functions + clean duplicate api files)
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
+<<<<<<< HEAD
 >>>>>>> 1c45fe4 (fix: update vercel.json with explicit routes and nodejs20 runtime)
+=======
+>>>>>>> dcd60b5 (fix: bundle API handler with esbuild for Vercel Node.js runtime)
