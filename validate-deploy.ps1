@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 # Set URL via environment variable or use default placeholder
 if ([string]::IsNullOrEmpty($env:DEPLOY_URL)) {
-    $baseUrl = "https://entretempo-prod.netlify.app"
+    $baseUrl = "https://entretempo-app.netlify.app"
 } else {
     $baseUrl = $env:DEPLOY_URL
 }

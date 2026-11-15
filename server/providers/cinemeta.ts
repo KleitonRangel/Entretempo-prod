@@ -39,6 +39,7 @@ export type TitleDetails = {
   id: string;
   type: CinemetaType;
   title?: string;
+  year: number | null;
   runtime: number | null;
   episodeMinutes: number | null;
   episodes: number | null;
@@ -148,6 +149,7 @@ export async function getScreenDetails(id: string, type: CinemetaType): Promise<
       id,
       type,
       title: meta.name,
+      year: parseYear(meta.releaseInfo ?? meta.year),
       runtime,
       episodeMinutes: type === "series" ? runtime : null,
       episodes: episodeCount > 0 ? episodeCount : null,
