@@ -4,37 +4,32 @@
 const HLTB_BASE = "https://howlongtobeat.com";
 const CINEMETA_SEARCH = "https://api.cinemeta.io/v1/search/";
 const CINEMETA_DETAILS = "https://api.cinemeta.io/v1/details/";
-const TVMAZE_SEARCH = "https://api.tvmaze.com/search/shows?q=";
-
-// ---- Token cache for HowLongToBeat (shared across invocations) ----
 let hltbTokenCache = null;
 
-async function getHltbToken(force = false) {
+async function getHltbToken(force) {
   const now = Date.now();
   if (!force && hltbTokenCache && hltbTokenCache.expiresAt > now) {
     return hltbTokenCache.token;
   }
-  
-  const initRes = await fetch(`${HLTB_BASE}/api/search/site/init?t=${now}`, {
-    headers: { referer: `${HLTB_BASE}/`, origin: HLTB_BASE },
-    signal: AbortSignal.timeout(10_000)
+
+  var initRes = await fetch(HLTB_BASE + "/api/search/site/init?t=" + now, {
+    headers: { referer: HLTB_BASE + "/", origin: HLTB_BASE },
+    signal: AbortSignal.timeout(10000)
   });
-  
+
   if (!initRes.ok) throw new Error("Failed to get HL TB token");
-  const data = await initRes.json();
+  var data = await initRes.json();
   if (!data.token) throw new Error("HowLongToBeat did not return a search token.");
-  
+
   hltbTokenCache = { token: data.token, expiresAt: now + 8 * 60 * 1000 };
   return data.token;
 }
 
 async function searchHltbGames(query) {
-  const key = `hltb:${query.toLowerCase()}`;
-  
   try {
-    let token = await getHltbToken();
-    
-    const body = JSON.stringify({
+    var token = await getHltbToken(false);
+
+    var body = JSON.stringify({
       searchType: "games",
       searchTerms: query.trim().split(/\s+/).filter(Boolean),
       searchPage: 1,
@@ -62,34 +57,33 @@ async function searchHltbGames(query) {
       useCache: true
     });
 
-    const res = await fetch(`${HLTB_BASE}/api/search/site`, {
+    var res = await fetch(HLTB_BASE + "/api/search/site", {
       method: "POST",
       headers: {
         "content-type": "application/json",
         "x-auth-token": token,
         origin: HLTB_BASE,
-        referer: `${HLTB_BASE}/`
+        referer: HLTB_BASE + "/"
       },
-      body,
-      signal: AbortSignal.timeout(15_000)
+      body: body,
+      signal: AbortSignal.timeout(15000)
     });
 
     if (!res.ok) {
-      // Token may have expired — retry with fresh token
       token = await getHltbToken(true);
-      const res2 = await fetch(`${HLTB_BASE}/api/search/site`, {
+      res = await fetch(HLTB_BASE + "/api/search/site", {
         method: "POST",
         headers: {
           "content-type": "application/json",
           "x-auth-token": token,
           origin: HLTB_BASE,
-          referer: `${HLTB_BASE}/`
+          referer: HLTB_BASE + "/"
         },
-        body,
-        signal: AbortSignal.timeout(15_000)
+        body: body,
+        signal: AbortSignal.timeout(15000)
       });
-      if (!res2.ok) throw new Error("HowLongToBeat search failed");
-      return parseHltbResults(await res2.json());
+      if (!res.ok) throw new Error("HowLongToBeat search failed");
+      return parseHltbResults(await res.json());
     }
 
     return parseHltbResults(await res.json());
@@ -101,84 +95,84 @@ async function searchHltbGames(query) {
 
 function parseHltbResults(data) {
   if (!data.data || !Array.isArray(data.data)) return [];
-  
-  return data.data.map(game => {
-    const image = game.game_image;
-    let coverUrl = "";
+
+  return data.data.map(function(game) {
+    var image = game.game_image;
+    var coverUrl = "";
     if (image) {
       if (image.startsWith("http")) {
         coverUrl = image;
       } else {
-        const suffix = image.includes("?") ? "&" : "?";
-        coverUrl = `${HLTB_BASE}/games/${image}${suffix}width=400`;
+        var suffix = image.includes("?") ? "&" : "?";
+        coverUrl = HLTB_BASE + "/games/" + image + suffix + "width=400";
       }
     }
-    
+
     return {
       id: String(game.game_id),
       type: "game",
       title: game.game_name,
       year: (game.release_world && game.release_world > 0) ? game.release_world : null,
-      coverUrl,
+      coverUrl: coverUrl,
       thumbUrl: image ? 
-        (image.startsWith("http") ? `${image}?width=200` : `${HLTB_BASE}/games/${image}?width=200`) 
-        : "",
+        (image.startsWith("http") ? image + "?width=200" : HLTB_BASE + "/games/" + image + "?width=200") : "",
       source: "HowLongToBeat",
-      externalUrl: `${HLTB_BASE}/game/${game.game_id}`,
+      externalUrl: HLTB_BASE + "/game/" + game.game_id,
       platforms: game.profile_platform 
-        ? game.profile_platform.split(",").map(p => p.trim()).filter(Boolean).slice(0, 5) 
-        : [],
+        ? game.profile_platform.split(",").map(function(p) { return p.trim(); }).filter(Boolean).slice(0, 5) : [],
       times: {
         main: secondsToMinutes(game.comp_main),
         mainExtra: secondsToMinutes(game.comp_plus),
         completionist: secondsToMinutes(game.comp_100)
       }
     };
-  }).filter(g => g.title);
+  }).filter(function(g) { return g.title; });
 }
 
 function secondsToMinutes(value) {
-  const seconds = Number(value);
+  var seconds = Number(value);
   if (!seconds || seconds <= 0) return null;
   return Math.round(seconds / 60);
 }
 
 async function searchCinemeta(query, type) {
   try {
-    const res = await fetch(`${CINEMETA_SEARCH}${type}?query=${encodeURIComponent(query)}`, {
-      signal: AbortSignal.timeout(15_000)
+    var res = await fetch(CINEMETA_SEARCH + type + "?query=" + encodeURIComponent(query), {
+      signal: AbortSignal.timeout(15000)
     });
-    
-    if (!res.ok) throw new Error(`Cinemeta search failed for ${type}`);
-    const data = await res.json();
-    
-    return (data.results || []).map(item => ({
-      id: item.imdbId,
-      type: type === "movie" ? "movie" : "series",
-      title: item.name || item.title || "Unknown",
-      year: item.year || null,
-      coverUrl: item.poster || "",
-      thumbUrl: item.thumb || "",
-      source: "Cinemeta",
-      externalUrl: `https://www.imdb.com/title/${item.imdbId}/`,
-      description: item.plot || ""
-    }));
+
+    if (!res.ok) throw new Error("Cinemeta search failed for " + type);
+    var data = await res.json();
+
+    return (data.results || []).map(function(item) {
+      return {
+        id: item.imdbId,
+        type: type === "movie" ? "movie" : "series",
+        title: item.name || item.title || "Unknown",
+        year: item.year || null,
+        coverUrl: item.poster || "",
+        thumbUrl: item.thumb || "",
+        source: "Cinemeta",
+        externalUrl: "https://www.imdb.com/title/" + item.imdbId + "/",
+        description: item.plot || ""
+      };
+    });
   } catch (e) {
-    console.error(`[cinemeta:${type}]`, e);
+    console.error("[cinemeta:" + type + "]", e);
     return [];
   }
 }
 
 async function getScreenDetails(id, type) {
   try {
-    const res = await fetch(`${CINEMETA_DETAILS}${type}/${id}`, {
-      signal: AbortSignal.timeout(15_000)
+    var res = await fetch(CINEMETA_DETAILS + type + "/" + id, {
+      signal: AbortSignal.timeout(15000)
     });
-    
-    if (!res.ok) throw new Error(`Cinemeta details failed for ${type} ${id}`);
-    const data = await res.json();
-    
-    const item = data.result || {};
+
+    if (!res.ok) throw new Error("Cinemeta details failed for " + type + " " + id);
+    var data = await res.json();
+
+    var item = data.result || {};
     return {
       title: item.name || item.title || "Unknown",
       year: item.year || null,
@@ -187,35 +181,38 @@ async function getScreenDetails(id, type) {
       rating: item.imdbRating ? parseFloat(item.imdbRating) : null,
       poster: item.poster || "",
       backdrop: item.backdrop || "",
-      seasonEpisodes: (item.seasons || []).map((season, idx) => ({
-        season: idx + 1,
-        episodes: season.episodeCount || 0,
-        year: season.airYear || null
-      }))
+      seasonEpisodes: (item.seasons || []).map(function(season, idx) {
+        return {
+          season: idx + 1,
+          episodes: season.episodeCount || 0,
+          year: season.airYear || null
+        };
+      })
     };
   } catch (e) {
-    console.error(`[cinemeta-details:${type}]`, e);
+    console.error("[cinemeta-details:" + type + "]", e);
     return { title: "Unknown", year: null, genres: [], plot: "", rating: null, poster: "", backdrop: "", seasonEpisodes: [] };
   }
 }
 
 async function getTvmazeSeasonCovers(id) {
   try {
-    const res = await fetch(`https://api.tvmaze.com/showes/${encodeURIComponent(id)}/episodes`, {
-      signal: AbortSignal.timeout(15_000)
+    var res = await fetch("https://api.tvmaze.com/showes/" + encodeURIComponent(id) + "/episodes", {
+      signal: AbortSignal.timeout(15000)
     });
-    
+
     if (!res.ok) return {};
-    const episodes = await res.json();
-    
-    const covers = {};
-    for (const ep of episodes) {
-      const season = String(ep.season);
+    var episodes = await res.json();
+
+    var covers = {};
+    for (var i = 0; i < episodes.length; i++) {
+      var ep = episodes[i];
+      var season = String(ep.season);
       if (!covers[season] && ep.image) {
         covers[season] = ep.image.medium || ep.image.original;
       }
     }
-    
+
     return covers;
   } catch (e) {
     console.warn("[tvmaze]", e);
@@ -223,106 +220,98 @@ async function getTvmazeSeasonCovers(id) {
   }
 }
 
-// ---- Main handler ----
-export default async function handler(request) {
-  const url = new URL(request.url);
-  
-  if (url.pathname === "/api/health") {
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { "content-type": "application/json" }
+function isBlockedHost(hostname) {
+  var host = hostname.toLowerCase();
+  if (host === "localhost" || host.endsWith(".localhost") || host === "0.0.0.0" || host === "::1") return true;
+  if (/^127\./.test(host)) return true;
+  if (/^10\./.test(host)) return true;
+  if (/^192\.168\//.test(host)) return true;
+  if (/^169\.254\//.test(host)) return true;
+  var match = /^172\.([1-9]\d|\d\d|3[0-1])\./.exec(host);
+  if (match) return true;
+  return false;
+}
+
+async function handleSearch(url) {
+  const type = url.searchParams.get("type");
+  const query = (url.searchParams.get("q") || "").trim().slice(0, 120);
+
+  if (!["game", "movie", "series"].includes(type)) {
+    return new Response(JSON.stringify({ error: "Tipo inválido." }), { status: 400 });
+  }
+  if (query.length < 2) {
+    return new Response(JSON.stringify({ error: "Digite pelo menos 2 caracteres." }), { status: 400 });
+  }
+
+  try {
+    const results = type === "game" 
+      ? await searchHltbGames(query) 
+      : await searchCinemeta(query, type);
+
+    return new Response(JSON.stringify({ results }), {
+      headers: { 
+        "cache-control": "public, max-age=300", 
+        "content-type": "application/json" 
+      }
     });
+  } catch (e) {
+    console.error("[search:" + type + "]", e);
+    return new Response(JSON.stringify({ error: "Falha na busca." }), { status: 502 });
+  }
+}
+
+async function handleDetails(url) {
+  const type = url.searchParams.get("type");
+  const id = (url.searchParams.get("id") || "").trim();
+
+  if (type !== "movie" && type !== "series") {
+    return new Response(JSON.stringify({ error: "Tipo inválido." }), { status: 400 });
+  }
+  if (!/^[a-zA-Z0-9_-]{1,48}$/.test(id)) {
+    return new Response(JSON.stringify({ error: "ID inválido." }), { status: 400 });
   }
 
-  // /api/search?type=game&q=gta | type=movie&query=something | type=series
-  if (url.pathname === "/api/search") {
-    const type = url.searchParams.get("type");
-    const query = (url.searchParams.get("q") || "").trim().slice(0, 120);
-    
-    if (!["game", "movie", "series"].includes(type)) {
-      return new Response(JSON.stringify({ error: "Tipo inválido." }), { status: 400 });
-    }
-    if (query.length < 2) {
-      return new Response(JSON.stringify({ error: "Digite pelo menos 2 caracteres." }), { status: 400 });
-    }
+  try {
+    const [details, seasonCovers] = await Promise.all([
+      getScreenDetails(id, type),
+      type === "series" ? getTvmazeSeasonCovers(id) : Promise.resolve({})
+    ]);
 
-    try {
-      const results = type === "game" 
-        ? await searchHltbGames(query) 
-        : await searchCinemeta(query, type);
-      
-      return new Response(JSON.stringify({ results }), {
-        headers: { 
-          "cache-control": "public, max-age=300", 
-          "content-type": "application/json" 
-        }
-      });
-    } catch (e) {
-      console.error(`[search:${type}]`, e);
-      return new Response(JSON.stringify({ error: "Falha na busca." }), { status: 502 });
-    }
-  }
+    var modifiedEpisodes = details.seasonEpisodes.map(function(e) {
+      return Object.assign({}, e, { coverUrl: seasonCovers[String(e.season)] || null });
+    });
 
-  // /api/details?type=movie&id=tt1234 | type=series&id=something
-  if (url.pathname === "/api/details") {
-    const type = url.searchParams.get("type");
-    const id = (url.searchParams.get("id") || "").trim();
-    
-    if (type !== "movie" && type !== "series") {
-      return new Response(JSON.stringify({ error: "Tipo inválido." }), { status: 400 });
-    }
-    if (!/^[a-zA-Z0-9_-]{1,48}$/.test(id)) {
-      return new Response(JSON.stringify({ error: "ID inválido." }), { status: 400 });
-    }
-
-    try {
-      const [details, seasonCovers] = await Promise.all([
-        getScreenDetails(id, type),
-        type === "series" ? getTvmazeSeasonCovers(id) : Promise.resolve({})
-      ]);
-      
-      return new Response(JSON.stringify({ 
-        details: { 
-          ...details, 
-          seasonEpisodes: details.seasonEpisodes.map(e => ({ 
-            ...e, 
-            coverUrl: seasonCovers[String(e.season)] || null 
-          })) 
-        } 
-      }), {
-        headers: { 
-          "cache-control": "public, max-age=3600", 
-          "content-type": "application/json" 
-        }
-      });
-    } catch (e) {
-      console.error(`[details:${type}]`, e);
-      return new Response(JSON.stringify({ error: "Falha ao carregar detalhes." }), { status: 502 });
-    }
-  }
-
-  // /api/image?url=https://example.com/image.jpg
-  if (url.pathname === "/api/image") {
-    const raw = url.searchParams.get("url") || "";
-    
-    try {
-      const imgUrl = new URL(raw);
-      
-      if (imgUrl.protocol !== "https:" && imgUrl.protocol !== "http:") {
-        return new Response(null, { status: 400 });
+    return new Response(JSON.stringify(Object.assign({}, details, { seasonEpisodes: modifiedEpisodes })), {
+      headers: { 
+        "cache-control": "public, max-age=3600", 
+        "content-type": "application/json" 
       }
+    });
+  } catch (e) {
+    console.error("[details:" + type + "]", e);
+    return new Response(JSON.stringify({ error: "Falha ao carregar detalhes." }), { status: 502 });
+  }
+}
 
-      const host = imgUrl.hostname.toLowerCase();
-      if (host === "localhost" || /^127\./.test(host) || /^10\/.test(host) || /^192\.168\/.test(host)) {
-        return new Response(null, { status: 400 });
-      }
+async function handleImage(url) {
+  const raw = url.searchParams.get("url") || "";
 
-      const upstream = await fetch(imgUrl.toString(), {
+  try {
+    var imgUrl = new URL(raw);
+
+    if (imgUrl.protocol !== "https:" && imgUrl.protocol !== "http:") {
+      return new Response(null, { status: 400 });
+    }
+
+    const host = imgUrl.hostname.toLowerCase();
+    if (!isBlockedHost(host)) {
+      var upstream = await fetch(imgUrl.toString(), {
         headers: { 
           "user-agent": "Chrome/131.0", 
           accept: "image/*" 
         },
         redirect: "follow",
-        signal: AbortSignal.timeout(15_000)
+        signal: AbortSignal.timeout(15000)
       });
 
       if (!upstream.ok) return new Response(null, { status: 502 });
@@ -330,19 +319,34 @@ export default async function handler(request) {
       const ct = upstream.headers.get("content-type") || "";
       if (!ct.startsWith("image/")) return new Response(null, { status: 415 });
 
-      const buf = await upstream.arrayBuffer();
-      
+      var buf = await upstream.arrayBuffer();
+
       return new Response(new Uint8Array(buf), {
         headers: { 
           "content-type": ct, 
           "cache-control": "public, max-age=604800" 
         }
       });
-    } catch (e) {
-      console.warn("[image]", e);
-      return new Response(null, { status: 500 });
+    } else {
+      return new Response(null, { status: 400 });
     }
+  } catch (e) {
+    console.warn("[image]", e);
+    return new Response(null, { status: 500 });
   }
+}
+
+export default async function handler(request) {
+  const url = new URL(request.url);
+
+  if (url.pathname === "/api/health") {
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "content-type": "application/json" }
+    });
+  }
+  if (url.pathname === "/api/search") return handleSearch(url);
+  if (url.pathname === "/api/details") return handleDetails(url);
+  if (url.pathname === "/api/image") return handleImage(url);
 
   return new Response(null, { status: 404 });
 }
