@@ -7,7 +7,12 @@
 }
 =======
   "buildCommand": "npm run build",
+<<<<<<< HEAD
   "framework": "vite",
   "repositoryUrl": "https://github.com/KleitonRangel/Entretempo.git"
 }
 >>>>>>> e5437f5 (fix: correct vercel.json (vite framework, repo URL))
+=======
+  "framework": "vite"
+}
+>>>>>>> bfc2074 (fix: remove repositoryUrl from vercel.json)
