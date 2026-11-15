@@ -4,15 +4,7 @@ dist
 .env.local
 *.log
 .DS_Store
-<<<<<<< HEAD
-<<<<<<< HEAD
 .vercel/
 .vercel
-=======
-.vercel/
->>>>>>> e9443a5 (fix: remove .vercel from git, add to gitignore)
-=======
-.vercel/
-.vercel
->>>>>>> dea8701 (cleanup: remove test files)
-.env*
+.netlify/
+netlify/functions/_next/*

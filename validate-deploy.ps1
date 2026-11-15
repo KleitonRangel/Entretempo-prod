@@ -1,8 +1,12 @@
-# Validation script for Entretempo Vercel deployment
+# Validation script for Entretempo deployment (Netlify)
 $ErrorActionPreference = 'Stop'
-# NOTE: Team project (kleitonrangels-projects) has SSO enabled, blocking API access.
-# Use the personal deployment URL which works without authentication.
-$baseUrl = "https://entretempo-five.vercel.app"
+
+# Set URL via environment variable or use default placeholder
+if ([string]::IsNullOrEmpty($env:DEPLOY_URL)) {
+    $baseUrl = "https://entretempo-prod.netlify.app"
+} else {
+    $baseUrl = $env:DEPLOY_URL
+}
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
@@ -70,7 +74,7 @@ Test-Endpoint -Name "GET /api/search?type=series&q=breaking+bad" -Url "$baseUrl/
 Test-Endpoint -Name "GET /api/details?type=series&id=tt9054364" -Url "$baseUrl/api/details?type=series&id=tt9054364" -ExpectedKeys @('details', 'id', 'title', 'seasons')
 
 Write-Host ""
-Write-Host "--- Game Search (HLTB) ---" -ForegroundColor Yellow
+Write-Host "--- Game Search (empty - HLTB blocked) ---" -ForegroundColor Yellow
 Test-Endpoint -Name "GET /api/search?type=game&q=cyberpunk+2077" -Url "$baseUrl/api/search?type=game&q=cyberpunk+2077" -ExpectedKeys @('results')
 
 Write-Host ""

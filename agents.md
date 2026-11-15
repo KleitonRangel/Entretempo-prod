@@ -7,9 +7,9 @@ Somos uma equipe de desenvolvimento focado em criar aplicações web modernas. N
 ## Resumo do Projeto
 
 - **Entretempo** - Aplicativo de entretenimento com integração Supabase
-- **Framework** - Vite + React (frontend) + Serverless Functions (API)
+- **Framework** - Vite + React (frontend) + Netlify Functions (API)
 - **Teste** - 58 testes passando no Vitest, incluindo bugs corrigidos
-- **Deploy** - Vercel (free tier — limite crítico!)
+- **Deploy** - Netlify (free tier — sem limite de deploys!)
 
 ---
 
@@ -17,33 +17,32 @@ Somos uma equipe de desenvolvimento focado em criar aplicações web modernas. N
 
 ### 🛑 NUNCA force-push para testar ou validar!
 
-Cada push ao GitHub **dispara automaticamente** um deploy no Vercel. No free tier, o limite é **100 deploys por dia**. Já atingimos esse limite devido a pushes desnecessários de teste/validação.
+Cada push ao GitHub **dispara automaticamente** um deploy no Netlify. O free tier do Netlify **NÃO tem limite de deploys**.
 
 **Regra absoluta:**
-- Teste **TUDO** localmente (`npm test`, `npx vite build`, `validate-deploy.ps1`) ANTES de qualquer commit.
+- Teste **TUDO** localmente (`npm test`, `npx vite build`) ANTES de qualquer commit.
 - Faça **UM ÚNICO COMMIT** com todas as alterações.
 - Force-push **APENAS UMA VEZ** quando estiver 100% pronto para produção.
-- NUNCA force-push para "verificar se funcionou" — use o script de validação local.
 
 ### 🛑 NUNCA faça commits pequenos apenas para testar!
 
-Cada commit = deploy automático no Vercel. Se você precisa fazer 5 tentativas, são 5 deploys gastos.
+Cada commit = deploy automático no Netlify. Se você precisa fazer 5 tentativas, são 5 deploys gastos.
 
 **Fluxo correto:**
 ```
 1. Faça TODAS as alterações necessárias
 2. Rode npm test → deve passar 58/58
 3. Rode npx vite build → deve compilar sem erros
-4. Rode validate-deploy.ps1 contra a URL de produção existente
+4. Rode powershell -ExecutionPolicy Bypass -File validate-deploy.ps1 contra a URL de produção existente
 5. SOMENTE SE TUDO PASSAR: git add . → commit único → force-push UMA VEZ
 ```
 
-### 🛑 Use sempre o deploy pessoal, NUNCA o da equipe!
+### ✅ Deploy no Netlify (CORRETO)
 
-- ✅ **Correto:** `https://entretempo-five.vercel.app` (sem SSO, API funciona)
-- ❌ **Errado:** URLs com `-kleitonrangels-projects.vercel.app` (SSO bloqueia a API)
-
-O projeto de equipe (`kleitonrangels-projects`) tem autenticação obrigatória ativada. Isso impede que a API responda JSON — retorna página de login do Vercel no lugar.
+- **URL de produção**: `https://entretempo-prod.netlify.app` (sem SSO, API funciona)
+- **Build command**: `npm run build`
+- **Publish directory**: `dist`
+- **Functions directory**: `netlify/functions`
 
 ---
 
@@ -63,11 +62,11 @@ git config --global user.name "Kleiton Rangel"
 git config --global user.email "KleitonRangel@users.noreply.github.com"
 ```
 
-> ⚠️ **NUNCA use `SEU_NOME` ou `SEU_EMAIL`** — o Vercel bloqueia deploys se a autoria do commit não corresponder à conta GitHub.
+> ⚠️ **NUNCA use `SEU_NOME` ou `SEU_EMAIL`** — o Netlify pode bloquear deploys se a autoria do commit não corresponder ao autor configurado no Git.
 
 ---
 
-## Deploy no Vercel
+## Deploy no Netlify
 
 1. Configure o Git corretamente (veja seção acima)
 2. Faça **TODAS** as alterações de uma vez
@@ -80,18 +79,17 @@ git config --global user.email "KleitonRangel@users.noreply.github.com"
 
 ## Monitoramento de Deploy (OBRIGATÓRIO)
 
-**Sempre após fazer push, acompanhe o deploy do Vercel até o final.** Não assuma que deu certo só porque o commit foi empurrado. Siga estes passos:
+**Sempre após fazer push, acompanhe o deploy do Netlify até o final.** Não assuma que deu certo só porque o commit foi empurrado. Siga estes passos:
 
-1. Após `git push`, aguarde o Vercel finalizar a build (verifique no painel ou use `npx vercel ls`)
+1. Após `git push`, aguarde o Netlify finalizar a build (verifique no painel ou use `ntl status`)
 2. Teste **todas** as rotas da API usando o script de validação:
    ```bash
    powershell -ExecutionPolicy Bypass -File validate-deploy.ps1
    ```
-3. Acesse a URL de produção (`https://entretempo-five.vercel.app`) e verifique se o frontend carrega sem erros no console
+3. Acesse a URL de produção (`https://entretempo-prod.netlify.app`) e verifique se o frontend carrega sem erros no console
 4. Se qualquer rota falhar, corrija o código, faça **UM ÚNICO** commit+push, e repita
 
 > ⚠️ **Nunca encerre a sessão até confirmar que todas as rotas estão funcionando na produção.**
-> ⚠️ **Se precisar de mais de 2 tentativas, pare e avise — estamos perto do limite diário.**
 
 ---
 
@@ -109,12 +107,6 @@ Exemplo: quando a API `/api/details` retornava dados sem envolver em `{ details 
 - A API do HLTB retorna 403 (IFW-U01) bloqueando requisições serverless.
 - Busca de jogos retorna array vazio.
 - Solução: usar outra API gratuita de jogos (IGDB via Stremio/Cinemeta, ou RAWG).
-
-### Limite de Deploys Diários (Free Tier)
-- **100 deploys por dia** no plano gratuito.
-- Já atingimos esse limite devido a pushes desnecessários.
-- Após atingir o limite, é preciso esperar 24h ou fazer upgrade.
-- **Resumo:** cada push conta como deploy. Seja cirúrgico.
 
 ---
 
