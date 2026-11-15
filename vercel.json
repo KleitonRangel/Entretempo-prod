@@ -28,13 +28,7 @@
 >>>>>>> 4329469 (feat: rewrite API as Vercel Node.js functions (.js))
   "framework": "vite",
   "functions": {
-    "api/search.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/details.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/image.js": {
+    "api/index.js": {
       "runtime": "nodejs20.x"
     }
 <<<<<<< HEAD
@@ -43,20 +37,6 @@
 >>>>>>> a87178f (feat: add Vercel Functions for API (search, details, image proxy))
 =======
   },
-  "routes": [
-    {
-      "src": "/api/search",
-      "dest": "/api/search.js"
-    },
-    {
-      "src": "/api/details",
-      "dest": "/api/details.js"
-    },
-    {
-      "src": "/api/image",
-      "dest": "/api/image.js"
-    }
-  ],
   "rewrites": [
     {
       "source": "/(.*)",
