@@ -31,6 +31,7 @@
 =======
 >>>>>>> 491d99f (test: add minimal api/health.js to verify function routing)
   "functions": {
+<<<<<<< HEAD
     "api/*.js": {
       "runtime": "nodejs20.x"
     }
@@ -39,6 +40,9 @@
 }
 >>>>>>> a87178f (feat: add Vercel Functions for API (search, details, image proxy))
 =======
+=======
+    "api/*.js": {}
+>>>>>>> 20d8560 (fix: remove invalid runtime version from vercel.json)
   },
   "rewrites": [
     {
