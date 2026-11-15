@@ -37,6 +37,7 @@ async function getSeriesDetails(id: string): Promise<any> {
     const totalSeasons = seasonsSorted.length > 0 ? seasonsSorted.length : null;
 
     const seasonEpisodes = seasonsSorted.map(function(s: number) {
+<<<<<<< HEAD
       return {
         season: s,
         episodes: seasonMap[s],
@@ -184,12 +185,16 @@ async function getTvmazeSeasons(id: string): Promise<any> {
     const seasonEpisodes = seasonsSorted.map(function(s: number) {
       // Get cover URL from first episode of that season
       const ep = videos.find(function(v) { return v.season === s; });
+=======
+>>>>>>> 06840a5 (fix: corrigir erros de TypeScript que impediam a build no Vercel)
       return {
         season: s,
         episodes: seasonMap[s],
         coverUrl: null, // Cinemeta doesn't provide per-episode images in the meta response
       };
     });
+
+    const totalSeasonsNum = totalSeasons ?? 0;
 
     return {
       id: meta.id || id,
@@ -202,7 +207,7 @@ async function getTvmazeSeasons(id: string): Promise<any> {
       runtime: episodeMinutes, // For series, avg minutes per episode
       episodeMinutes: episodeMinutes,
       episodes: totalEpisodes || null,
-      seasons: totalSeasons !== undefined && totalSeasons > 0 ? totalSeasons : (meta.year ? null : 0),
+      seasons: totalSeasonsNum > 0 ? totalSeasonsNum : (meta.year ? null : 0),
       seasonEpisodes: seasonEpisodes,
     };
 <<<<<<< HEAD

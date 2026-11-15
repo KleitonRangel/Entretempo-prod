@@ -54,6 +54,7 @@ async function getHltbGames(query: string): Promise<any[]> {
 function parseHltbResults(data: any): any[] {
   if (!data.data || !Array.isArray(data.data)) return [];
 <<<<<<< HEAD
+<<<<<<< HEAD
   return data.data.map(function(game: any) {
     const image = game.game_image; let coverUrl = "";
     if (image) { if (image.startsWith("http")) { coverUrl = image; } else { const suffix = image.includes("?") ? "&" : "?"; coverUrl = HLTB_BASE + "/games/" + image + suffix + "width=400"; } }
@@ -66,6 +67,13 @@ function parseHltbResults(data: any): any[] {
     return { id: String(game.game_id), type: "game", title: game.game_name, year: (game.release_world && game.release_world > 0) ? game.release_world : null, coverUrl, thumbUrl: image ? (image.startsWith("http") ? image + "?width=200" : HLTB_BASE + "/games/" + image + "?width=200") : "", source: "HowLongToBeat", externalUrl: HLTB_BASE + "/game/" + game.game_id, platforms: game.profile_platform ? game.profile_platform.split(",").map(function(p) { return p.trim(); }).filter(Boolean).slice(0, 5) : [], times: { main: secMin(game.comp_main), mainExtra: secMin(game.comp_plus), completionist: secMin(game.comp_100) } };
   }).filter(function(g) { return g.title; });
 >>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
+=======
+  return data.data.map(function(game: any) {
+    const image = game.game_image; let coverUrl = "";
+    if (image) { if (image.startsWith("http")) { coverUrl = image; } else { const suffix = image.includes("?") ? "&" : "?"; coverUrl = HLTB_BASE + "/games/" + image + suffix + "width=400"; } }
+    return { id: String(game.game_id), type: "game", title: game.game_name, year: (game.release_world && game.release_world > 0) ? game.release_world : null, coverUrl, thumbUrl: image ? (image.startsWith("http") ? image + "?width=200" : HLTB_BASE + "/games/" + image + "?width=200") : "", source: "HowLongToBeat", externalUrl: HLTB_BASE + "/game/" + game.game_id, platforms: game.profile_platform ? game.profile_platform.split(",").map(function(p: string) { return p.trim(); }).filter(Boolean).slice(0, 5) : [], times: { main: secMin(game.comp_main), mainExtra: secMin(game.comp_plus), completionist: secMin(game.comp_100) } };
+  }).filter(function(g: any) { return g.title; });
+>>>>>>> 06840a5 (fix: corrigir erros de TypeScript que impediam a build no Vercel)
 }
 
 function secMin(value?: number): number | null { const s = Number(value); if (!s || s <= 0) return null; return Math.round(s / 60); }
@@ -82,6 +90,7 @@ async function getCinemetaResults(query: string, typeFilter: "movie" | "series")
     const data = await res.json();
     
     return (data.metas || []).filter(function(m: any) { return m.id && m.name; }).slice(0, 10).map(function(item: any) {
+<<<<<<< HEAD
       const posterUrl = item.poster || "";
       const thumbUrl = posterUrl.replace("/poster/small/", "/poster/medium/") || "";
       // Extract year from releaseInfo (e.g. "2010" or "2008–2013")
@@ -128,6 +137,8 @@ async function getCinemetaResults(query: string, typeFilter: "movie" | "series")
     const data = await res.json();
     
     return (data.metas || []).filter(function(m) { return m.id && m.name; }).slice(0, 10).map(function(item: any) {
+=======
+>>>>>>> 06840a5 (fix: corrigir erros de TypeScript que impediam a build no Vercel)
       const posterUrl = item.poster || "";
       const thumbUrl = posterUrl.replace("/poster/small/", "/poster/medium/") || "";
       // Extract year from releaseInfo (e.g. "2010" or "2008–2013")
