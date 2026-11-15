@@ -1,6 +1,13 @@
 {
+<<<<<<< HEAD
   "version": 2,
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
+=======
+  "buildCommand": "npm run build",
+  "framework": "vite",
+  "repositoryUrl": "https://github.com/KleitonRangel/Entretempo.git"
+}
+>>>>>>> e5437f5 (fix: correct vercel.json (vite framework, repo URL))
