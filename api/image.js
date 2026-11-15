@@ -13,7 +13,7 @@ function isBlockedHost(hostname) {
   );
 }
 
-export default async function handler(request, response) {
+export default async function handler(request) {
   const url = new URL(request.url);
   const raw = url.searchParams.get("url") || "";
 
@@ -21,13 +21,11 @@ export default async function handler(request, response) {
     const imgUrl = new URL(raw);
 
     if (imgUrl.protocol !== "https:" && imgUrl.protocol !== "http:") {
-      response.status(400).json({ error: "Endereço de imagem inválido." });
-      return;
+      return new Response(JSON.stringify({ error: "Endereço de imagem inválido." }), { status: 400 });
     }
 
     if (isBlockedHost(imgUrl.hostname)) {
-      response.status(400).json({ error: "Esse endereço não pode ser usado." });
-      return;
+      return new Response(JSON.stringify({ error: "Esse endereço não pode ser usado." }), { status: 400 });
     }
 
     const upstream = await fetch(imgUrl.toString(), {
@@ -41,32 +39,28 @@ export default async function handler(request, response) {
     });
 
     if (!upstream.ok) {
-      response.status(502).end();
-      return;
+      return new Response(null, { status: 502 });
     }
 
     const contentType = upstream.headers.get("content-type") || "";
     if (!contentType.startsWith("image/")) {
-      response.status(415).end();
-      return;
+      return new Response(null, { status: 415 });
     }
 
     const buffer = Buffer.from(await upstream.arrayBuffer());
     if (buffer.byteLength > 12 * 1024 * 1024) {
-      response.status(413).end();
-      return;
+      return new Response(null, { status: 413 });
     }
 
-    response.setHeader("content-type", contentType);
-    response.setHeader("cache-control", "public, max-age=604800, immutable");
-    response.send(buffer);
+    return new Response(buffer, {
+      headers: { "content-type": contentType, "cache-control": "public, max-age=604800, immutable" }
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (/abort/i.test(message)) {
-      response.status(504).end();
-      return;
+      return new Response(null, { status: 504 });
     }
     console.warn("[image]", error instanceof Error ? error.message : error);
-    response.status(400).end();
+    return new Response(null, { status: 400 });
   }
 }
