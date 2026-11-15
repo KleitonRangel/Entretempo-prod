@@ -1,5 +1,5 @@
-// Vercel Serverless Function — All API handlers inlined for Node.js runtime
-// Uses TypeScript with ESM exports (Vercel auto-compiles .ts files)
+// Vercel Serverless Function — All API handlers using Web fetch-style exports
+// Vercel Node runtime requires named HTTP method exports for Response returns
 
 const HLTB_BASE = "https://howlongtobeat.com";
 const CINEMETA_SEARCH = "https://api.cinemeta.io/v1/search/";
@@ -232,124 +232,124 @@ function isBlockedHost(hostname: string): boolean {
   return false;
 }
 
-async function handleSearch(url: URL): Promise<Response> {
-  const type = url.searchParams.get("type");
-  const query = (url.searchParams.get("q") || "").trim().slice(0, 120);
-
-  if (!["game", "movie", "series"].includes(type!)) {
-    return new Response(JSON.stringify({ error: "Tipo inválido." }), { status: 400 });
-  }
-  if (query.length < 2) {
-    return new Response(JSON.stringify({ error: "Digite pelo menos 2 caracteres." }), { status: 400 });
-  }
-
-  try {
-    const results = type === "game"
-      ? await searchHltbGames(query)
-      : await searchCinemeta(query, type);
-
-    return new Response(JSON.stringify({ results }), {
-      headers: {
-        "cache-control": "public, max-age=300",
-        "content-type": "application/json"
-      }
-    });
-  } catch (e) {
-    console.error("[search:" + type + "]", e);
-    return new Response(JSON.stringify({ error: "Falha na busca." }), { status: 502 });
-  }
+function json(data: any, cache?: string): Response {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (cache) headers["cache-control"] = cache;
+  return new Response(JSON.stringify(data), { headers });
 }
 
-async function handleDetails(url: URL): Promise<Response> {
-  const type = url.searchParams.get("type");
-  const id = (url.searchParams.get("id") || "").trim();
+export function GET(request: Request): Promise<Response> {
+  const url = new URL(request.url);
 
-  if (type !== "movie" && type !== "series") {
-    return new Response(JSON.stringify({ error: "Tipo inválido." }), { status: 400 });
-  }
-  if (!/^[a-zA-Z0-9_-]{1,48}$/.test(id)) {
-    return new Response(JSON.stringify({ error: "ID inválido." }), { status: 400 });
-  }
-
-  try {
-    const [details, seasonCovers] = await Promise.all([
-      getScreenDetails(id, type),
-      type === "series" ? getTvmazeSeasonCovers(id) : Promise.resolve({})
-    ]);
-
-    const modifiedEpisodes = details.seasonEpisodes.map(function(e) {
-      return Object.assign({}, e, { coverUrl: seasonCovers[String(e.season)] || null });
-    });
-
-    const merged = Object.assign({}, details, { seasonEpisodes: modifiedEpisodes });
-
-    return new Response(JSON.stringify(merged), {
-      headers: {
-        "cache-control": "public, max-age=3600",
-        "content-type": "application/json"
-      }
-    });
-  } catch (e) {
-    console.error("[details:" + type + "]", e);
-    return new Response(JSON.stringify({ error: "Falha ao carregar detalhes." }), { status: 502 });
-  }
-}
-
-async function handleImage(url: URL): Promise<Response> {
-  const raw = url.searchParams.get("url") || "";
-
-  try {
-    var imgUrl = new URL(raw);
-
-    if (imgUrl.protocol !== "https:" && imgUrl.protocol !== "http:") {
-      return new Response(null, { status: 400 });
-    }
-
-    const host = imgUrl.hostname.toLowerCase();
-    if (!isBlockedHost(host)) {
-      var upstream = await fetch(imgUrl.toString(), {
-        headers: {
-          "user-agent": "Chrome/131.0",
-          accept: "image/*"
-        },
-        redirect: "follow",
-        signal: AbortSignal.timeout(15000)
-      });
-
-      if (!upstream.ok) return new Response(null, { status: 502 });
-
-      const ct = upstream.headers.get("content-type") || "";
-      if (!ct.startsWith("image/")) return new Response(null, { status: 415 });
-
-      var buf = await upstream.arrayBuffer();
-
-      return new Response(new Uint8Array(buf), {
-        headers: {
-          "content-type": ct,
-          "cache-control": "public, max-age=604800"
-        }
-      });
-    } else {
-      return new Response(null, { status: 400 });
-    }
-  } catch (e) {
-    console.warn("[image]", e);
-    return new Response(null, { status: 500 });
-  }
-}
-
-export default async function handler(request: Request): Promise<Response> {
-  // Use 'http://localhost' as base for relative URLs from Vercel runtime
-  const url = new URL(request.url, "http://localhost");
-
+  // Health check
   if (url.pathname === "/api/health") {
-    return new Response(JSON.stringify({ ok: true }), {
+    return Promise.resolve(new Response(JSON.stringify({ ok: true }), {
       headers: { "content-type": "application/json" }
+    }));
+  }
+
+  // Search endpoint
+  if (url.pathname === "/api/search") {
+    const type = url.searchParams.get("type");
+    const query = (url.searchParams.get("q") || "").trim().slice(0, 120);
+
+    if (!["game", "movie", "series"].includes(type!)) {
+      return Promise.resolve(json({ error: "Tipo inválido." }, null));
+    }
+    if (query.length < 2) {
+      return Promise.resolve(json({ error: "Digite pelo menos 2 caracteres." }, null));
+    }
+
+    const searchPromise = type === "game"
+      ? searchHltbGames(query)
+      : searchCinemeta(query, type);
+
+    return searchPromise.then(function(results) {
+      return json({ results }, "public, max-age=300");
+    }).catch(function(e) {
+      console.error("[search:" + type + "]", e);
+      return json({ error: "Falha na busca." }, null);
     });
   }
-  if (url.pathname === "/api/search") return handleSearch(url);
-  if (url.pathname === "/api/details") return handleDetails(url);
-  if (url.pathname === "/api/image") return handleImage(url);
 
-  return new Response(null, { status: 404 });
+  // Details endpoint
+  if (url.pathname === "/api/details") {
+    const type = url.searchParams.get("type");
+    const id = (url.searchParams.get("id") || "").trim();
+
+    if (type !== "movie" && type !== "series") {
+      return Promise.resolve(json({ error: "Tipo inválido." }, null));
+    }
+    if (!/^[a-zA-Z0-9_-]{1,48}$/.test(id)) {
+      return Promise.resolve(json({ error: "ID inválido." }, null));
+    }
+
+    const detailsPromise = getScreenDetails(id, type);
+    const seasonCoversPromise = type === "series" ? getTvmazeSeasonCovers(id) : Promise.resolve({});
+
+    return Promise.all([detailsPromise, seasonCoversPromise]).then(function(_result) {
+      const details = _result[0];
+      const seasonCovers = _result[1];
+
+      const modifiedEpisodes = details.seasonEpisodes.map(function(e: any) {
+        return Object.assign({}, e, { coverUrl: seasonCovers[String(e.season)] || null });
+      });
+
+      const merged = Object.assign({}, details, { seasonEpisodes: modifiedEpisodes });
+
+      return json(merged, "public, max-age=3600");
+    }).catch(function(e) {
+      console.error("[details:" + type + "]", e);
+      return json({ error: "Falha ao carregar detalhes." }, null);
+    });
+  }
+
+  // Image proxy endpoint
+  if (url.pathname === "/api/image") {
+    const raw = url.searchParams.get("url") || "";
+
+    try {
+      var imgUrl = new URL(raw);
+
+      if (imgUrl.protocol !== "https:" && imgUrl.protocol !== "http:") {
+        return Promise.resolve(new Response(null, { status: 400 }));
+      }
+
+      const host = imgUrl.hostname.toLowerCase();
+      if (!isBlockedHost(host)) {
+        var upstream = fetch(imgUrl.toString(), {
+          headers: {
+            "user-agent": "Chrome/131.0",
+            accept: "image/*"
+          },
+          redirect: "follow",
+          signal: AbortSignal.timeout(15000)
+        });
+
+        return upstream.then(function(resp) {
+          if (!resp.ok) return new Response(null, { status: 502 });
+          const ct = resp.headers.get("content-type") || "";
+          if (!ct.startsWith("image/")) return new Response(null, { status: 415 });
+          return resp.arrayBuffer().then(function(buf: ArrayBuffer) {
+            return new Response(new Uint8Array(buf), {
+              headers: {
+                "content-type": ct,
+                "cache-control": "public, max-age=604800"
+              }
+            });
+          });
+        }).catch(function(e) {
+          console.warn("[image]", e);
+          return new Response(null, { status: 500 });
+        });
+      } else {
+        return Promise.resolve(new Response(null, { status: 400 }));
+      }
+    } catch (e) {
+      console.warn("[image]", e);
+      return Promise.resolve(new Response(null, { status: 500 }));
+    }
+  }
+
+  return Promise.resolve(new Response(null, { status: 404 }));
 }
