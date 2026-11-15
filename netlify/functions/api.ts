@@ -1,18 +1,6 @@
 import { getScreenDetails, searchScreen } from "../../server/providers/cinemeta.js";
 import { getSeasonCovers } from "../../server/providers/tvmaze.js";
 
-function parseQuery(path: string): Record<string, string> {
-  const params: Record<string, string> = {};
-  const queryStart = path.indexOf("?");
-  if (queryStart === -1) return params;
-  const queryString = path.slice(queryStart + 1);
-  for (const pair of queryString.split("&")) {
-    const [key, value] = pair.split("=");
-    if (key) params[decodeURIComponent(key)] = decodeURIComponent(value || "");
-  }
-  return params;
-}
-
 function jsonResponse(data: unknown, statusCode = 200, extraHeaders: Record<string, string> = {}): Response {
   const headers = new Headers({
     "Content-Type": "application/json",
@@ -21,9 +9,14 @@ function jsonResponse(data: unknown, statusCode = 200, extraHeaders: Record<stri
   return new Response(JSON.stringify(data), { status: statusCode, headers });
 }
 
-async function apiHandler(event: { path: string; httpMethod: string }): Promise<Response> {
-  const { path, httpMethod } = event;
-  const query = parseQuery(path);
+async function apiHandler(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const path = url.pathname;
+  const httpMethod = request.method.toUpperCase();
+  const query: Record<string, string> = {};
+  for (const [key, value] of url.searchParams) {
+    query[key] = decodeURIComponent(value);
+  }
 
   if (httpMethod !== "GET") {
     return jsonResponse({ error: `Método não suportado: ${httpMethod}` }, 405);
