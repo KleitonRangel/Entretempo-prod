@@ -3,6 +3,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   "version": 2,
 <<<<<<< HEAD
   "rewrites": [
@@ -49,11 +50,14 @@
   "framework": "vite",
   "buildCommand": "",
 >>>>>>> ba479d9 (fix: remove functions from vercel.json - test SPA only)
+=======
+  "version": 2,
+  "functions": {
+    "api/index.js": {}
+  },
+>>>>>>> 23721fa (fix: proper vercel.json with functions + clean duplicate api files)
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
 >>>>>>> 1c45fe4 (fix: update vercel.json with explicit routes and nodejs20 runtime)
