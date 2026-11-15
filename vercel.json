@@ -52,12 +52,15 @@
 >>>>>>> ba479d9 (fix: remove functions from vercel.json - test SPA only)
 =======
   "version": 2,
+<<<<<<< HEAD
   "functions": {
     "api/index.ts": {
       "runtime": "edge"
     }
   },
 >>>>>>> 23721fa (fix: proper vercel.json with functions + clean duplicate api files)
+=======
+>>>>>>> 01c46c2 (fix: remove functions config from vercel.json to auto-detect Edge Functions)
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
