@@ -288,6 +288,7 @@ export function GET(request: Request) {
     };
 
     return new Response(JSON.stringify({ details: response }), { 
+<<<<<<< HEAD
       headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' } 
     });
 =======
@@ -329,6 +330,8 @@ export function GET(request: Request) {
     };
 
     return new Response(JSON.stringify(response), { 
+=======
+>>>>>>> 537440d (fix: envolver resposta de detalhes em { details } para compatibilidade com frontend)
       headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' } 
     });
 >>>>>>> a3eac72 (Replace Cinemeta with FreeApi.Pro + movier API)
