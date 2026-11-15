@@ -52,9 +52,10 @@
 >>>>>>> ba479d9 (fix: remove functions from vercel.json - test SPA only)
 =======
   "version": 2,
-  "buildCommand": "node scripts/build-api.js && npm run build",
   "functions": {
-    "dist-api/index.js": {}
+    "api/index.ts": {
+      "runtime": "edge"
+    }
   },
 >>>>>>> 23721fa (fix: proper vercel.json with functions + clean duplicate api files)
   "rewrites": [
