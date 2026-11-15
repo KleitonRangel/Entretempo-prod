@@ -39,10 +39,13 @@ Cada commit = deploy automático no Netlify. Se você precisa fazer 5 tentativas
 
 ### ✅ Deploy no Netlify (CORRETO)
 
-- **URL de produção**: `https://entretempo-prod.netlify.app` (sem SSO, API funciona)
+- **Repo GitHub**: `https://github.com/KleitonRangel/Entretempo-prod`
 - **Build command**: `npm run build`
 - **Publish directory**: `dist`
 - **Functions directory**: `netlify/functions`
+- **URL de produção**: Obtida após configurar o site no Netlify (ver `NETLIFY_DEPLOY.md`)
+
+> ⚠️ **Primeiro deploy**: Siga o guia em `NETLIFY_DEPLOY.md` para conectar o repo ao Netlify. Após configurado, cada push ao GitHub dispara um deploy automático.
 
 ---
 
@@ -86,7 +89,7 @@ git config --global user.email "KleitonRangel@users.noreply.github.com"
    ```bash
    powershell -ExecutionPolicy Bypass -File validate-deploy.ps1
    ```
-3. Acesse a URL de produção (`https://entretempo-prod.netlify.app`) e verifique se o frontend carrega sem erros no console
+3. Acesse a URL de produção (obtida no Netlify após o deploy) e verifique se o frontend carrega sem erros no console
 4. Se qualquer rota falhar, corrija o código, faça **UM ÚNICO** commit+push, e repita
 
 > ⚠️ **Nunca encerre a sessão até confirmar que todas as rotas estão funcionando na produção.**
