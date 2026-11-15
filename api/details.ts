@@ -97,20 +97,45 @@ function parseYear(yearStr?: string | null): number | null {
   return match ? parseInt(match[0]) : null;
 =======
 // Vercel Serverless Function — /api/details (GET)
-const CINEMETA_DETAILS = "https://api.cinemeta.io/v1/details/";
+import { getTitleDetailsByIMDBId } from "@valhalladev/movier";
 
-async function getScreenDetails(id: string, type: string): Promise<any> {
+async function getMovieSeriesDetails(id: string, type: string): Promise<any> {
   try {
-    const res = await fetch(CINEMETA_DETAILS + type + "/" + id, { signal: AbortSignal.timeout(15000) });
-    if (!res.ok) throw new Error("Cinemeta details failed for " + type + " " + id);
-    const data = await res.json();
-    const item = data.result || {};
-    return { title: item.name || item.title || "Unknown", year: item.year || null, genres: item.genres || [], plot: item.plot || "", rating: item.imdbRating ? parseFloat(item.imdbRating) : null, poster: item.poster || "", backdrop: item.backdrop || "", seasonEpisodes: (item.seasons || []).map(function(season, idx) { return { season: idx + 1, episodes: season.episodeCount || 0, year: season.airYear || null }; }) };
-  } catch (e) { console.error("[cinemeta-details:" + type + "]", e); return { title: "Unknown", year: null, genres: [], plot: "", rating: null, poster: "", backdrop: "", seasonEpisodes: [] }; }
+    const data = await getTitleDetailsByIMDBId(id);
+    
+    // Parse runtime to minutes
+    let runtimeMinutes: number | null = null;
+    if (data.runtime && typeof data.runtime === "object" && "seconds" in data.runtime) {
+      runtimeMinutes = Math.round((data.runtime as any).seconds / 60);
+    }
+
+    return {
+      id: id,
+      type: type,
+      title: data.name || "Unknown",
+      year: data.titleYear || null,
+      description: (data.plot && typeof data.plot === "string") ? data.plot.trim() : "",
+      genres: Array.isArray(data.genres) 
+        ? data.genres.map(function(g: string) { return g.charAt(0).toUpperCase() + g.slice(1); })
+        : [],
+      rating: data.mainRate && typeof data.mainRate === "object" && "rate" in data.mainRate 
+        ? (data.mainRate as any).rate 
+        : null,
+      runtime: runtimeMinutes,
+      episodeMinutes: runtimeMinutes, // For series, avg minutes per episode
+      posterUrl: data.posterImage && typeof data.posterImage === "object" && "url" in data.posterImage
+        ? (data.posterImage as any).url
+        : "",
+    };
+  } catch (e) {
+    console.error("[movier-details:" + type + "]", e);
+    return null;
+  }
 }
 
-async function getTvmazeSeasonCovers(id: string): Promise<Record<string, string>> {
+async function getTvmazeSeasons(id: string): Promise<any> {
   try {
+<<<<<<< HEAD
     const res = await fetch("https://api.tvmaze.com/shows/" + encodeURIComponent(id) + "/episodes", { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return {};
     const episodes = await res.json();
@@ -119,6 +144,45 @@ async function getTvmazeSeasonCovers(id: string): Promise<Record<string, string>
     return covers;
   } catch (e) { console.warn("[tvmaze]", e); return {}; }
 >>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
+=======
+    const res = await fetch("https://api.tvmaze.com/shows/" + encodeURIComponent(id), {
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!res.ok) return null;
+    const show = await res.json();
+    
+    // Get all episodes for season/episode breakdown
+    const epRes = await fetch("https://api.tvmaze.com/shows/" + encodeURIComponent(id) + "/episodes", {
+      signal: AbortSignal.timeout(15000)
+    });
+    
+    if (!epRes.ok) return null;
+    const episodes = await epRes.json();
+    
+    // Group by season
+    const seasonsMap: Record<string, any> = {};
+    for (const ep of episodes) {
+      const s = String(ep.season);
+      if (!seasonsMap[s]) {
+        seasonsMap[s] = {
+          season: ep.season,
+          episodes: 0,
+          coverUrl: ep.image ? (ep.image.medium || ep.image.original) : null,
+        };
+      }
+      seasonsMap[s].episodes++;
+    }
+    
+    const seasonEpisodes = Object.values(seasonsMap).sort(function(a, b) { return a.season - b.season; });
+    const totalSeasons = Object.keys(seasonsMap).length || show.network ? null : 0;
+    
+    return {
+      seasons: totalSeasons,
+      episodes: episodes.length || null,
+      seasonEpisodes: seasonEpisodes,
+    };
+  } catch (e) { console.warn("[tvmaze]", e); return null; }
+>>>>>>> a3eac72 (Replace Cinemeta with FreeApi.Pro + movier API)
 }
 
 export function GET(request: Request) {
@@ -126,6 +190,9 @@ export function GET(request: Request) {
   const type = url.searchParams.get("type");
   const id = (url.searchParams.get("id") || "").trim();
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a3eac72 (Replace Cinemeta with FreeApi.Pro + movier API)
   
   if (type !== "movie" && type !== "series") {
     return new Response(JSON.stringify({ error: "Tipo inválido." }), { headers: { 'content-type': 'application/json' } });
@@ -134,6 +201,7 @@ export function GET(request: Request) {
     return new Response(JSON.stringify({ error: "ID inválido." }), { headers: { 'content-type': 'application/json' } });
   }
 
+<<<<<<< HEAD
   const detailsPromise = type === "series" ? getSeriesDetails(id) : getMovieDetails(id);
 
   return detailsPromise.then(function(details) {
@@ -170,5 +238,44 @@ export function GET(request: Request) {
     const merged = Object.assign({}, details, { seasonEpisodes: modifiedEpisodes });
     return new Response(JSON.stringify(merged), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' } });
 >>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
+=======
+  const detailsPromise = getMovieSeriesDetails(id, type);
+  const seasonPromise = type === "series" ? getTvmazeSeasons(id) : Promise.resolve(null);
+
+  return Promise.all([detailsPromise, seasonPromise]).then(function(results) {
+    const movieData = results[0];
+    const tvmazeData = results[1];
+    
+    if (!movieData && !tvmazeData) {
+      return new Response(JSON.stringify({ error: "Detalhes não encontrados." }), { headers: { 'content-type': 'application/json' }, status: 404 });
+    }
+
+    const merged = Object.assign({}, movieData || {}, tvmazeData ? {
+      seasons: tvmazeData.seasons,
+      episodes: tvmazeData.episodes,
+      episodeMinutes: tvmazeData.episodeMinutes || null,
+      seasonEpisodes: tvmazeData.seasonEpisodes.map(function(ep) {
+        return { season: ep.season, episodes: ep.episodes, coverUrl: ep.coverUrl };
+      }),
+    } : {});
+
+    // Build response matching TitleDetails type
+    const response = {
+      id: merged.id || id,
+      type: merged.type || type,
+      runtime: merged.runtime || null,
+      episodeMinutes: merged.episodeMinutes || null,
+      episodes: merged.episodes || null,
+      seasons: merged.seasons || null,
+      seasonEpisodes: merged.seasonEpisodes || [],
+      description: merged.description || "",
+      genres: merged.genres || [],
+      rating: merged.rating ? String(merged.rating) : null,
+    };
+
+    return new Response(JSON.stringify(response), { 
+      headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' } 
+    });
+>>>>>>> a3eac72 (Replace Cinemeta with FreeApi.Pro + movier API)
   }).catch(function(e) { console.error("[details:" + type + "]", e); return new Response(JSON.stringify({ error: "Falha ao carregar detalhes." }), { headers: { 'content-type': 'application/json' }, status: 502 }); });
 }

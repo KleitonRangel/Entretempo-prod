@@ -1,10 +1,13 @@
 // Vercel Serverless Function — /api/search (GET)
 const HLTB_BASE = "https://howlongtobeat.com";
 <<<<<<< HEAD
+<<<<<<< HEAD
 const CINEMETA_SEARCH = "https://v3-cinemeta.strem.io/catalog/";
 =======
 const CINEMETA_SEARCH = "https://api.cinemeta.io/v1/search/";
 >>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
+=======
+>>>>>>> a3eac72 (Replace Cinemeta with FreeApi.Pro + movier API)
 
 let hltbToken: { token: string; expiresAt: number } | null = null;
 
@@ -64,6 +67,7 @@ function parseHltbResults(data: any): any[] {
 function secMin(value?: number): number | null { const s = Number(value); if (!s || s <= 0) return null; return Math.round(s / 60); }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 async function getCinemetaResults(query: string, typeFilter: "movie" | "series"): Promise<any[]> {
   try {
     const res = await fetch(CINEMETA_SEARCH + typeFilter + "/top/search=" + encodeURIComponent(query) + ".json", {
@@ -97,15 +101,45 @@ async function getCinemetaResults(query: string, typeFilter: "movie" | "series")
   } catch (e) { console.error("[cinemeta-search:" + typeFilter + "]", e); return []; }
 =======
 async function getCinemetaResults(query: string, type: string): Promise<any[]> {
+=======
+async function getMovieSeriesResults(query: string, typeFilter: string): Promise<any[]> {
+>>>>>>> a3eac72 (Replace Cinemeta with FreeApi.Pro + movier API)
   try {
-    const res = await fetch(CINEMETA_SEARCH + type + "?query=" + encodeURIComponent(query), { signal: AbortSignal.timeout(15000) });
-    if (!res.ok) throw new Error("Cinemeta search failed for " + type);
-    const data = await res.json();
-    return (data.results || []).map(function(item) {
-      return { id: item.imdbId, type: type === "movie" ? "movie" : "series", title: item.name || item.title || "Unknown", year: item.year || null, coverUrl: item.poster || "", thumbUrl: item.thumb || "", source: "Cinemeta", externalUrl: "https://www.imdb.com/title/" + item.imdbId + "/", description: item.plot || "" };
+    // Use FreeApi.Pro to search movies and TV shows — no API key needed
+    const res = await fetch("https://freeapi.pro/api/msearch?q=" + encodeURIComponent(query) + "&limit=10", {
+      signal: AbortSignal.timeout(15000)
     });
+<<<<<<< HEAD
   } catch (e) { console.error("[cinemeta:" + type + "]", e); return []; }
 >>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
+=======
+    if (!res.ok) throw new Error("FreeApi.Pro search failed");
+    const data = await res.json();
+    
+    // Filter results based on type preference
+    let filtered = (data.results || []).filter(function(r) { return r.type; });
+    if (typeFilter === "movie") {
+      filtered = filtered.filter(function(r) { return r.type === "Movie"; });
+    } else if (typeFilter === "series") {
+      filtered = filtered.filter(function(r) { return r.type.includes("Series"); });
+    }
+    
+    return filtered.slice(0, 10).map(function(item: any) {
+      const isMovie = item.type === "Movie";
+      return {
+        id: item.id || "",
+        type: isMovie ? "movie" : "series",
+        title: item.title || "Unknown",
+        year: item.year || null,
+        coverUrl: item.poster || "",
+        thumbUrl: item.poster ? item.poster.replace(/width=\d+/, "width=200") : "",
+        source: "FreeApi.Pro",
+        externalUrl: item.imdbUrl || ("https://www.imdb.com/title/" + (item.id || "") + "/"),
+        description: "" // Will be filled by /api/details
+      };
+    });
+  } catch (e) { console.error("[freemap:" + typeFilter + "]", e); return []; }
+>>>>>>> a3eac72 (Replace Cinemeta with FreeApi.Pro + movier API)
 }
 
 export function GET(request: Request) {
@@ -115,20 +149,31 @@ export function GET(request: Request) {
   if (!["game", "movie", "series"].includes(type!)) { return new Response(JSON.stringify({ error: "Tipo inválido." }), { headers: { 'content-type': 'application/json' } }); }
   if (query.length < 2) { return new Response(JSON.stringify({ error: "Digite pelo menos 2 caracteres." }), { headers: { 'content-type': 'application/json' } }); }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> a3eac72 (Replace Cinemeta with FreeApi.Pro + movier API)
   
   let searchPromise: Promise<any[]>;
   if (type === "game") {
     searchPromise = getHltbGames(query);
   } else if (type === "movie" || type === "series") {
+<<<<<<< HEAD
     // Use Cinemeta for movie/series search — no API key needed
     searchPromise = getCinemetaResults(query, type! as "movie" | "series");
+=======
+    // Use FreeApi.Pro for movie/series search (Cinemeta is down)
+    searchPromise = getMovieSeriesResults(query, type!);
+>>>>>>> a3eac72 (Replace Cinemeta with FreeApi.Pro + movier API)
   } else {
     searchPromise = Promise.resolve([]);
   }
   
+<<<<<<< HEAD
 =======
   const searchPromise = type === "game" ? getHltbGames(query) : getCinemetaResults(query, type);
 >>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
+=======
+>>>>>>> a3eac72 (Replace Cinemeta with FreeApi.Pro + movier API)
   return searchPromise.then(function(results) {
     return new Response(JSON.stringify({ results }), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=300' } });
   }).catch(function(e) { console.error("[search:" + type + "]", e); return new Response(JSON.stringify({ error: "Falha na busca." }), { headers: { 'content-type': 'application/json' }, status: 502 }); });
