@@ -1,4 +1,3 @@
-import { builder, type HandlerEvent, type HandlerResponse } from "@netlify/functions";
 import { getScreenDetails, searchScreen } from "../../server/providers/cinemeta.js";
 import { getSeasonCovers } from "../../server/providers/tvmaze.js";
 
@@ -14,18 +13,15 @@ function parseQuery(path: string): Record<string, string> {
   return params;
 }
 
-function jsonResponse(data: unknown, statusCode = 200, extraHeaders: Record<string, string> = {}): HandlerResponse {
-  return {
-    statusCode,
-    headers: {
-      "Content-Type": "application/json",
-      ...extraHeaders,
-    },
-    body: JSON.stringify(data),
-  };
+function jsonResponse(data: unknown, statusCode = 200, extraHeaders: Record<string, string> = {}): Response {
+  const headers = new Headers({
+    "Content-Type": "application/json",
+    ...extraHeaders,
+  });
+  return new Response(JSON.stringify(data), { status: statusCode, headers });
 }
 
-async function apiHandler(event: HandlerEvent): Promise<HandlerResponse> {
+export async function handler(event: { path: string; httpMethod: string }): Promise<Response> {
   const { path, httpMethod } = event;
   const query = parseQuery(path);
 
@@ -151,23 +147,22 @@ async function apiHandler(event: HandlerEvent): Promise<HandlerResponse> {
       });
 
       if (!response.ok) {
-        return { statusCode: response.status, headers: {}, body: "" };
+        return new Response("", { status: response.status });
       }
 
       const contentType = response.headers.get("content-type") ?? "";
       if (!contentType.startsWith("image/")) {
-        return { statusCode: 415, headers: {}, body: "" };
+        return new Response("", { status: 415 });
       }
 
       const buffer = Buffer.from(await response.arrayBuffer());
-      return {
-        statusCode: 200,
+      return new Response(buffer, {
+        status: 200,
         headers: {
           "Content-Type": contentType,
           "cache-control": "public, max-age=604800, immutable",
         },
-        body: buffer.toString("base64"),
-      };
+      });
     } catch (error) {
       console.warn("[image]", error instanceof Error ? error.message : error);
       return jsonResponse({ error: "Falha ao carregar imagem." }, 400);
@@ -177,5 +172,3 @@ async function apiHandler(event: HandlerEvent): Promise<HandlerResponse> {
   // Not found
   return jsonResponse({ error: `Rota não encontrada: ${path}` }, 404);
 }
-
-export default builder(apiHandler);
