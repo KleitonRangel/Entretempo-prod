@@ -8,6 +8,7 @@
 =======
   "buildCommand": "npm run build",
 <<<<<<< HEAD
+<<<<<<< HEAD
   "framework": "vite",
   "repositoryUrl": "https://github.com/KleitonRangel/Entretempo.git"
 }
@@ -16,3 +17,12 @@
   "framework": "vite"
 }
 >>>>>>> bfc2074 (fix: remove repositoryUrl from vercel.json)
+=======
+  "framework": "vite",
+  "functions": {
+    "api/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  }
+}
+>>>>>>> a87178f (feat: add Vercel Functions for API (search, details, image proxy))
