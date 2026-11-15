@@ -1,6 +1,10 @@
 // Vercel Serverless Function — /api/search (GET)
 const HLTB_BASE = "https://howlongtobeat.com";
+<<<<<<< HEAD
 const CINEMETA_SEARCH = "https://v3-cinemeta.strem.io/catalog/";
+=======
+const CINEMETA_SEARCH = "https://api.cinemeta.io/v1/search/";
+>>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
 
 let hltbToken: { token: string; expiresAt: number } | null = null;
 
@@ -42,15 +46,24 @@ async function getHltbGames(query: string): Promise<any[]> {
 
 function parseHltbResults(data: any): any[] {
   if (!data.data || !Array.isArray(data.data)) return [];
+<<<<<<< HEAD
   return data.data.map(function(game: any) {
     const image = game.game_image; let coverUrl = "";
     if (image) { if (image.startsWith("http")) { coverUrl = image; } else { const suffix = image.includes("?") ? "&" : "?"; coverUrl = HLTB_BASE + "/games/" + image + suffix + "width=400"; } }
     return { id: String(game.game_id), type: "game", title: game.game_name, year: (game.release_world && game.release_world > 0) ? game.release_world : null, coverUrl, thumbUrl: image ? (image.startsWith("http") ? image + "?width=200" : HLTB_BASE + "/games/" + image + "?width=200") : "", source: "HowLongToBeat", externalUrl: HLTB_BASE + "/game/" + game.game_id, platforms: game.profile_platform ? game.profile_platform.split(",").map(function(p: string) { return p.trim(); }).filter(Boolean).slice(0, 5) : [], times: { main: secMin(game.comp_main), mainExtra: secMin(game.comp_plus), completionist: secMin(game.comp_100) } };
   }).filter(function(g: any) { return g.title; });
+=======
+  return data.data.map(function(game) {
+    const image = game.game_image; let coverUrl = "";
+    if (image) { if (image.startsWith("http")) { coverUrl = image; } else { const suffix = image.includes("?") ? "&" : "?"; coverUrl = HLTB_BASE + "/games/" + image + suffix + "width=400"; } }
+    return { id: String(game.game_id), type: "game", title: game.game_name, year: (game.release_world && game.release_world > 0) ? game.release_world : null, coverUrl, thumbUrl: image ? (image.startsWith("http") ? image + "?width=200" : HLTB_BASE + "/games/" + image + "?width=200") : "", source: "HowLongToBeat", externalUrl: HLTB_BASE + "/game/" + game.game_id, platforms: game.profile_platform ? game.profile_platform.split(",").map(function(p) { return p.trim(); }).filter(Boolean).slice(0, 5) : [], times: { main: secMin(game.comp_main), mainExtra: secMin(game.comp_plus), completionist: secMin(game.comp_100) } };
+  }).filter(function(g) { return g.title; });
+>>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
 }
 
 function secMin(value?: number): number | null { const s = Number(value); if (!s || s <= 0) return null; return Math.round(s / 60); }
 
+<<<<<<< HEAD
 async function getCinemetaResults(query: string, typeFilter: "movie" | "series"): Promise<any[]> {
   try {
     const res = await fetch(CINEMETA_SEARCH + typeFilter + "/top/search=" + encodeURIComponent(query) + ".json", {
@@ -82,6 +95,17 @@ async function getCinemetaResults(query: string, typeFilter: "movie" | "series")
       };
     });
   } catch (e) { console.error("[cinemeta-search:" + typeFilter + "]", e); return []; }
+=======
+async function getCinemetaResults(query: string, type: string): Promise<any[]> {
+  try {
+    const res = await fetch(CINEMETA_SEARCH + type + "?query=" + encodeURIComponent(query), { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) throw new Error("Cinemeta search failed for " + type);
+    const data = await res.json();
+    return (data.results || []).map(function(item) {
+      return { id: item.imdbId, type: type === "movie" ? "movie" : "series", title: item.name || item.title || "Unknown", year: item.year || null, coverUrl: item.poster || "", thumbUrl: item.thumb || "", source: "Cinemeta", externalUrl: "https://www.imdb.com/title/" + item.imdbId + "/", description: item.plot || "" };
+    });
+  } catch (e) { console.error("[cinemeta:" + type + "]", e); return []; }
+>>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
 }
 
 export function GET(request: Request) {
@@ -90,6 +114,7 @@ export function GET(request: Request) {
   const query = (url.searchParams.get("q") || "").trim().slice(0, 120);
   if (!["game", "movie", "series"].includes(type!)) { return new Response(JSON.stringify({ error: "Tipo inválido." }), { headers: { 'content-type': 'application/json' } }); }
   if (query.length < 2) { return new Response(JSON.stringify({ error: "Digite pelo menos 2 caracteres." }), { headers: { 'content-type': 'application/json' } }); }
+<<<<<<< HEAD
   
   let searchPromise: Promise<any[]>;
   if (type === "game") {
@@ -101,6 +126,9 @@ export function GET(request: Request) {
     searchPromise = Promise.resolve([]);
   }
   
+=======
+  const searchPromise = type === "game" ? getHltbGames(query) : getCinemetaResults(query, type);
+>>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
   return searchPromise.then(function(results) {
     return new Response(JSON.stringify({ results }), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=300' } });
   }).catch(function(e) { console.error("[search:" + type + "]", e); return new Response(JSON.stringify({ error: "Falha na busca." }), { headers: { 'content-type': 'application/json' }, status: 502 }); });

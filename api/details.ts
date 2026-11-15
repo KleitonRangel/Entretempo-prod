@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // Vercel Serverless Function — /api/details (GET) v2
 const CINEMETA_META = "https://v3-cinemeta.strem.io/meta/";
 
@@ -94,12 +95,37 @@ function parseYear(yearStr?: string | null): number | null {
   if (!yearStr || typeof yearStr !== "string") return null;
   const match = yearStr.match(/^\d{4}/);
   return match ? parseInt(match[0]) : null;
+=======
+// Vercel Serverless Function — /api/details (GET)
+const CINEMETA_DETAILS = "https://api.cinemeta.io/v1/details/";
+
+async function getScreenDetails(id: string, type: string): Promise<any> {
+  try {
+    const res = await fetch(CINEMETA_DETAILS + type + "/" + id, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) throw new Error("Cinemeta details failed for " + type + " " + id);
+    const data = await res.json();
+    const item = data.result || {};
+    return { title: item.name || item.title || "Unknown", year: item.year || null, genres: item.genres || [], plot: item.plot || "", rating: item.imdbRating ? parseFloat(item.imdbRating) : null, poster: item.poster || "", backdrop: item.backdrop || "", seasonEpisodes: (item.seasons || []).map(function(season, idx) { return { season: idx + 1, episodes: season.episodeCount || 0, year: season.airYear || null }; }) };
+  } catch (e) { console.error("[cinemeta-details:" + type + "]", e); return { title: "Unknown", year: null, genres: [], plot: "", rating: null, poster: "", backdrop: "", seasonEpisodes: [] }; }
+}
+
+async function getTvmazeSeasonCovers(id: string): Promise<Record<string, string>> {
+  try {
+    const res = await fetch("https://api.tvmaze.com/shows/" + encodeURIComponent(id) + "/episodes", { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) return {};
+    const episodes = await res.json();
+    const covers: Record<string, string> = {};
+    for (let i = 0; i < episodes.length; i++) { const ep = episodes[i]; const season = String(ep.season); if (!covers[season] && ep.image) { covers[season] = ep.image.medium || ep.image.original; } }
+    return covers;
+  } catch (e) { console.warn("[tvmaze]", e); return {}; }
+>>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
 }
 
 export function GET(request: Request) {
   const url = new URL(request.url);
   const type = url.searchParams.get("type");
   const id = (url.searchParams.get("id") || "").trim();
+<<<<<<< HEAD
   
   if (type !== "movie" && type !== "series") {
     return new Response(JSON.stringify({ error: "Tipo inválido." }), { headers: { 'content-type': 'application/json' } });
@@ -133,5 +159,16 @@ export function GET(request: Request) {
     return new Response(JSON.stringify({ details: response }), { 
       headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' } 
     });
+=======
+  if (type !== "movie" && type !== "series") { return new Response(JSON.stringify({ error: "Tipo inválido." }), { headers: { 'content-type': 'application/json' } }); }
+  if (!/^[a-zA-Z0-9_-]{1,48}$/.test(id)) { return new Response(JSON.stringify({ error: "ID inválido." }), { headers: { 'content-type': 'application/json' } }); }
+  const detailsPromise = getScreenDetails(id, type);
+  const seasonCoversPromise = type === "series" ? getTvmazeSeasonCovers(id) : Promise.resolve({});
+  return Promise.all([detailsPromise, seasonCoversPromise]).then(function(_result) {
+    const details = _result[0]; const seasonCovers = _result[1];
+    const modifiedEpisodes = details.seasonEpisodes.map(function(e: any) { return Object.assign({}, e, { coverUrl: seasonCovers[String(e.season)] || null }); });
+    const merged = Object.assign({}, details, { seasonEpisodes: modifiedEpisodes });
+    return new Response(JSON.stringify(merged), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' } });
+>>>>>>> 13cb448 (feat: individual route files with full inline logic for Vercel Node.js)
   }).catch(function(e) { console.error("[details:" + type + "]", e); return new Response(JSON.stringify({ error: "Falha ao carregar detalhes." }), { headers: { 'content-type': 'application/json' }, status: 502 }); });
 }
