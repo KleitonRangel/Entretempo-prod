@@ -1,20 +1,6 @@
-// @ts-ignore
-import { handle } from "@netlify/functions";
+import { builder, type HandlerEvent, type HandlerResponse } from "@netlify/functions";
 import { getScreenDetails, searchScreen } from "../../server/providers/cinemeta.js";
 import { getSeasonCovers } from "../../server/providers/tvmaze.js";
-
-type HandlerEvent = {
-  path: string;
-  queryStringParameters?: Record<string, string>;
-  httpMethod: string;
-  headers?: Record<string, string>;
-};
-
-type HandlerResponse = {
-  statusCode: number;
-  headers?: Record<string, string>;
-  body: string;
-};
 
 function parseQuery(path: string): Record<string, string> {
   const params: Record<string, string> = {};
@@ -192,4 +178,4 @@ async function apiHandler(event: HandlerEvent): Promise<HandlerResponse> {
   return jsonResponse({ error: `Rota não encontrada: ${path}` }, 404);
 }
 
-export default handle(apiHandler);
+export default builder(apiHandler);
