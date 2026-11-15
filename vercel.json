@@ -16,6 +16,11 @@
 >>>>>>> 5ab6658 (fix: inline all API providers into single serverless function)
 =======
   "version": 2,
+  "functions": {
+    "api/test.ts": {
+      "runtime": "edge"
+    }
+  },
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
