@@ -20,7 +20,13 @@
 =======
   "framework": "vite",
   "functions": {
-    "api/*.ts": {
+    "api/search.ts": {
+      "runtime": "nodejs20.x"
+    },
+    "api/details.ts": {
+      "runtime": "nodejs20.x"
+    },
+    "api/image.ts": {
       "runtime": "nodejs20.x"
     }
   }
