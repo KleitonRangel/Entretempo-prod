@@ -11,7 +11,7 @@ type State = {
 
 /**
  * Evita tela em branco quando algum item com dados inesperados quebra a
- * renderização. Os dados continuam salvos no navegador.
+ * renderização. Os dados continuam salvos na conta do usuário.
  */
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </span>
             <h1>Algo deu errado nesta tela</h1>
             <p>
-              Seus itens continuam salvos neste navegador. Recarregue para voltar à lista; se o
+              Seus itens continuam salvos na sua conta. Recarregue para voltar à lista; se o
               problema persistir, exporte um backup em <strong>Dados</strong>.
             </p>
             <div className="fatal-error-actions">

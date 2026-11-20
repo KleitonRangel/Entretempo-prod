@@ -8,8 +8,8 @@ import type {
   Status,
 } from "../types";
 import { isSpeed } from "./time";
+import { supabase } from "./supabase";
 
-const STORAGE_KEY = "entretempo:v1";
 const DAY = 86_400_000;
 
 export function uid(): string {
@@ -144,107 +144,72 @@ export function normalizeItem(raw: unknown, index = 0): Item | null {
   };
 }
 
-// ─── localStorage (síncrono — interface original mantida) ────────────
+// ─── Supabase (armazenamento na nuvem, por usuário) ──────────────────
 
-export function loadItems(): Item[] | null {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw) as unknown;
-    const list = Array.isArray(parsed)
-      ? parsed
-      : Array.isArray((parsed as { items?: unknown }).items)
-        ? (parsed as { items: unknown[] }).items
-        : [];
-
-    const items = list
-      .map((entry, index) => normalizeItem(entry, index))
-      .filter((item): item is Item => item !== null);
-
-    return items;
-  } catch {
-    return null;
-  }
+/** Verifica se as credenciais públicas do Supabase estão presentes no build. */
+export function isSupabaseConfigured(): boolean {
+  return Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 }
 
-export function saveItems(items: Item[]): void {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, items }));
-  } catch (error) {
-    console.warn("Não foi possível salvar no navegador.", error);
-  }
+/** Converte um Item para o formato de linha da tabela `items`. */
+export function itemToRow(item: Item, userId: string) {
+  return {
+    id: item.id,
+    user_id: userId,
+    title: item.title,
+    type: item.type,
+    status: item.status,
+    order: item.order,
+    in_progress: item.inProgress,
+    cover_url: item.coverUrl,
+    cover_source: item.coverSource,
+    source: item.source,
+    external_id: item.externalId,
+    external_url: item.externalUrl,
+    year: item.year,
+    description: item.description,
+    game_times: item.gameTimes,
+    game_time_mode: item.gameTimeMode,
+    episodes: item.episodes,
+    episode_minutes: item.episodeMinutes,
+    seasons: item.seasons,
+    season_episodes: item.seasonEpisodes,
+    selected_seasons: item.selectedSeasons,
+    speed: item.speed,
+    runtime: item.runtime,
+    created_at: item.createdAt,
+    updated_at: item.updatedAt,
+    finished_at: item.finishedAt,
+    discarded_at: item.discardedAt,
+    sample: item.sample ?? false,
+  };
 }
 
-export function clearStoredItems(): void {
-  try {
-    window.localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Sem problema: o estado em memória continua funcionando.
-  }
-}
+const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
-// ─── Supabase (assíncrono — sync sob demanda) ────────────────────────
-
-let _supabaseAvailable = false;
-
-async function getSupabaseClient() {
-  const { supabase } = await import("./supabase");
-  return supabase;
-}
-
-export async function isSupabaseConfigured(): Promise<boolean> {
-  if (_supabaseAvailable) return true;
-  try {
-    const client = await getSupabaseClient();
-    if (!client || !import.meta.env.VITE_SUPABASE_URL) return false;
-    // Quick ping to verify connection
-    await client.from("items").select("id").limit(1).maybeSingle();
-    _supabaseAvailable = true;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function syncToSupabase(items: Item[]): Promise<boolean> {
-  const ok = await isSupabaseConfigured();
-  if (!ok) return false;
+export async function syncToSupabase(items: Item[], userId: string): Promise<boolean> {
+  if (!userId || !isSupabaseConfigured()) return false;
 
   try {
-    const client = await getSupabaseClient();
-    const dbItems = items.map((item) => ({
-      id: item.id,
-      title: item.title,
-      type: item.type,
-      status: item.status,
-      order: item.order,
-      in_progress: item.inProgress,
-      cover_url: item.coverUrl,
-      cover_source: item.coverSource,
-      source: item.source,
-      external_id: item.externalId,
-      external_url: item.externalUrl,
-      year: item.year,
-      description: item.description,
-      game_times: item.gameTimes,
-      game_time_mode: item.gameTimeMode,
-      episodes: item.episodes,
-      episode_minutes: item.episodeMinutes,
-      seasons: item.seasons,
-      season_episodes: item.seasonEpisodes,
-      selected_seasons: item.selectedSeasons,
-      speed: item.speed,
-      runtime: item.runtime,
-      created_at: item.createdAt,
-      updated_at: item.updatedAt,
-      finished_at: item.finishedAt,
-      discarded_at: item.discardedAt,
-      sample: item.sample ?? false,
-    }));
+    const client = supabase;
 
-    const { error } = await client.from("items").upsert(dbItems);
-    if (error) throw error;
+    if (items.length > 0) {
+      const { error } = await client
+        .from("items")
+        .upsert(items.map((item) => itemToRow(item, userId)), { onConflict: "id" });
+      if (error) throw error;
+    }
+
+    // Remove da nuvem o que foi excluído localmente.
+    const ids = items.map((item) => item.id);
+    if (ids.some((id) => !SAFE_ID.test(id))) return true;
+
+    let prune = client.from("items").delete().eq("user_id", userId);
+    if (ids.length > 0) prune = prune.not("id", "in", `(${ids.join(",")})`);
+
+    const { error: pruneError } = await prune;
+    if (pruneError) throw pruneError;
+
     return true;
   } catch (err) {
     console.warn("Falha ao sincronizar com o Supabase:", err);
@@ -252,15 +217,15 @@ export async function syncToSupabase(items: Item[]): Promise<boolean> {
   }
 }
 
-export async function loadFromSupabase(): Promise<Item[]> {
-  const ok = await isSupabaseConfigured();
-  if (!ok) return [];
+export async function loadFromSupabase(userId: string): Promise<Item[]> {
+  if (!userId || !isSupabaseConfigured()) return [];
 
   try {
-    const client = await getSupabaseClient();
+    const client = supabase;
     const { data, error } = await client
       .from("items")
       .select("*")
+      .eq("user_id", userId)
       .order("order", { ascending: true });
 
     if (error || !Array.isArray(data)) return [];
@@ -271,15 +236,13 @@ export async function loadFromSupabase(): Promise<Item[]> {
   }
 }
 
-export async function clearSupabase(): Promise<boolean> {
-  const ok = await isSupabaseConfigured();
-  if (!ok) return false;
+export async function clearSupabase(userId: string): Promise<boolean> {
+  if (!userId || !isSupabaseConfigured()) return false;
 
   try {
-    const client = await getSupabaseClient();
-    // Delete all items (no filter needed — just truncate the table for this user)
-    await client.from("items").delete().gt("id", ""); // no-op filter, but works
-    return true;
+    const client = supabase;
+    const { error } = await client.from("items").delete().eq("user_id", userId);
+    return !error;
   } catch {
     return false;
   }

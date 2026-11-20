@@ -14,19 +14,24 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import type { Item, NewItemInput, Status, ToastState } from "./types";
 import { STATUS_META, TYPE_META } from "./lib/catalog";
-import { createItem, loadItems, saveItems, seedItems } from "./lib/storage";
 import {
-  formatCompact,
-  itemDuration,
-  normalizeTitle,
-} from "./lib/time";
+  clearSupabase,
+  createItem,
+  loadFromSupabase,
+  seedItems,
+  syncToSupabase,
+} from "./lib/storage";
+import { getSession, onAuthChange, signOut } from "./lib/auth";
+import { formatCompact, itemDuration, normalizeTitle } from "./lib/time";
 import { AddItemModal } from "./components/AddItemModal";
 import { CoverPicker } from "./components/CoverPicker";
 import { DataModal } from "./components/DataModal";
 import { Icon } from "./components/Icon";
 import { ItemCard } from "./components/ItemCard";
+import { LoginScreen } from "./components/LoginScreen";
 import { Toast } from "./components/Toast";
 
 const TABS: Status[] = ["current", "finished", "discarded"];
@@ -60,7 +65,9 @@ function BrandMark() {
 }
 
 export default function App() {
-  const [items, setItems] = useState<Item[]>(() => loadItems() ?? seedItems());
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [items, setItems] = useState<Item[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<Status>("current");
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -73,6 +80,8 @@ export default function App() {
   const searchRef = useRef<HTMLInputElement>(null);
   const toastTimer = useRef<number | null>(null);
 
+  const userId = session?.user.id ?? null;
+
   const isMac =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform);
 
@@ -81,9 +90,64 @@ export default function App() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  // Sessão do Supabase Auth (persistida pelo próprio cliente).
   useEffect(() => {
-    saveItems(items);
-  }, [items]);
+    let active = true;
+
+    getSession()
+      .then((current) => {
+        if (active) setSession(current);
+      })
+      .catch(() => {
+        if (active) setSession(null);
+      });
+
+    const unsubscribe = onAuthChange((next) => setSession(next));
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // Carrega os itens do usuário autenticado (ou usa exemplos na primeira vez).
+  useEffect(() => {
+    if (!userId) {
+      setItems([]);
+      setItemsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setItemsLoading(true);
+
+    loadFromSupabase(userId)
+      .then((cloud) => {
+        if (cancelled) return;
+        setItems(cloud.length > 0 ? cloud : seedItems());
+        setItemsLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setItems(seedItems());
+        setItemsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // Sincroniza alterações com o Supabase (debounce para evitar excesso).
+  useEffect(() => {
+    if (!userId || itemsLoading) return;
+
+    const timer = window.setTimeout(() => {
+      void syncToSupabase(items, userId);
+    }, 500);
+
+    return () => window.clearTimeout(timer);
+  }, [items, userId, itemsLoading]);
 
   useEffect(() => {
     if (!highlightId) return;
@@ -301,11 +365,7 @@ export default function App() {
     setExpandedId(null);
     setCoverItemId(null);
     setShowSampleNote(false);
-    try {
-      window.localStorage.removeItem("entretempo:v1");
-    } catch {
-      // O estado em memória já foi limpo.
-    }
+    if (userId) void clearSupabase(userId);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -330,6 +390,24 @@ export default function App() {
 
   const sampleCount = items.filter((item) => item.sample).length;
   const firstInProgress = inProgressItems[0];
+
+  if (session === undefined) {
+    return (
+      <div className="auth-shell">
+        <div className="ambient ambient-one" />
+        <div className="ambient ambient-two" />
+        <div className="grain" />
+        <div className="auth-card is-loading">
+          <span className="spinner" />
+          <p>Verificando sua sessão…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <LoginScreen />;
+  }
 
   return (
     <div className="app-shell">
@@ -364,6 +442,15 @@ export default function App() {
           <button type="button" className="primary-button" onClick={() => setAddOpen(true)}>
             <Icon name="plus" size={17} />
             <span>Adicionar item</span>
+          </button>
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={() => void signOut()}
+            title={session.user.email ? `Sair de ${session.user.email}` : "Sair da conta"}
+          >
+            <Icon name="logout" size={16} />
+            <span>Sair</span>
           </button>
         </div>
       </header>
@@ -555,7 +642,7 @@ export default function App() {
         <span>entretempo — seu tempo, bem gasto.</span>
         <button type="button" className="footer-link" onClick={() => setDataOpen(true)}>
           <Icon name="database" size={13} />
-          Dados salvos neste navegador
+          Backup e dados
         </button>
       </footer>
 

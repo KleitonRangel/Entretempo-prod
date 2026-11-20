@@ -1,12 +1,30 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  loadItems,
+  clearSupabase,
+  itemToRow,
+  loadFromSupabase,
   normalizeItem,
   parseImportedItems,
-  saveItems,
   seedItems,
+  syncToSupabase,
 } from "./storage";
 import { makeItem, slimeSeasons } from "../test/fixtures";
+
+const mocks = vi.hoisted(() => ({ from: vi.fn() }));
+
+vi.mock("./supabase", () => ({
+  supabase: { from: mocks.from },
+}));
+
+beforeEach(() => {
+  vi.stubEnv("VITE_SUPABASE_URL", "https://example.supabase.co");
+  vi.stubEnv("VITE_SUPABASE_ANON_KEY", "anon-key");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  mocks.from.mockReset();
+});
 
 describe("normalizeItem", () => {
   it("completa itens antigos sem os campos de temporada", () => {
@@ -85,32 +103,7 @@ describe("normalizeItem", () => {
   });
 });
 
-describe("persistência", () => {
-  it("faz round-trip dos itens no localStorage", () => {
-    const item = makeItem({
-      id: "roundtrip",
-      title: "Ruptura",
-      episodes: 10,
-      episodeMinutes: 49,
-      seasons: 1,
-      seasonEpisodes: [{ season: 2, episodes: 10 }],
-      selectedSeasons: [2],
-    });
-
-    saveItems([item]);
-    const loaded = loadItems();
-
-    expect(loaded).toHaveLength(1);
-    expect(loaded?.[0].selectedSeasons).toEqual([2]);
-    expect(loaded?.[0].seasonEpisodes).toEqual([{ season: 2, episodes: 10 }]);
-  });
-
-  it("retorna null quando o armazenamento está vazio ou corrompido", () => {
-    expect(loadItems()).toBeNull();
-    window.localStorage.setItem("entretempo:v1", "{quebrado");
-    expect(loadItems()).toBeNull();
-  });
-
+describe("backup em arquivo", () => {
   it("importa backup no formato antigo e no novo", () => {
     const oldFormat = JSON.stringify([{ title: "Antigo", type: "movie" }]);
     const newFormat = JSON.stringify({ items: [{ title: "Novo", type: "game" }] });
@@ -133,5 +126,85 @@ describe("seeds", () => {
         item.seasonEpisodes.some((entry) => entry.season === season),
       )).toBe(true);
     }
+  });
+});
+
+describe("Supabase por usuário", () => {
+  it("converte o item para o formato da tabela com user_id", () => {
+    const item = makeItem({ id: "abc", title: "Ruptura" });
+    const row = itemToRow(item, "user-123");
+
+    expect(row).toMatchObject({
+      id: "abc",
+      user_id: "user-123",
+      title: "Ruptura",
+      in_progress: item.inProgress,
+      cover_url: item.coverUrl,
+      game_time_mode: item.gameTimeMode,
+      selected_seasons: item.selectedSeasons,
+    });
+  });
+
+  it("não sincroniza sem usuário autenticado", async () => {
+    const result = await syncToSupabase([makeItem()], "");
+
+    expect(result).toBe(false);
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("envia upsert com user_id e remove itens apagados da nuvem", async () => {
+    const item = makeItem({ id: "keep" });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const not = vi.fn().mockResolvedValue({ error: null });
+    const eq = vi.fn(() => ({ not }));
+    const del = vi.fn(() => ({ eq }));
+
+    mocks.from.mockReturnValueOnce({ upsert }).mockReturnValueOnce({ delete: del });
+
+    const result = await syncToSupabase([item], "user-1");
+
+    expect(result).toBe(true);
+    expect(upsert).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: "keep", user_id: "user-1" })],
+      { onConflict: "id" },
+    );
+    expect(del).toHaveBeenCalled();
+    expect(eq).toHaveBeenCalledWith("user_id", "user-1");
+    expect(not).toHaveBeenCalledWith("id", "in", "(keep)");
+  });
+
+  it("carrega apenas os itens do usuário e normaliza as linhas", async () => {
+    const order = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: "row-1",
+          user_id: "user-1",
+          title: "Duna",
+          type: "movie",
+          status: "current",
+        },
+      ],
+      error: null,
+    });
+    const eq = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ eq }));
+
+    mocks.from.mockReturnValueOnce({ select });
+
+    const items = await loadFromSupabase("user-1");
+
+    expect(items).toHaveLength(1);
+    expect(items[0].title).toBe("Duna");
+    expect(eq).toHaveBeenCalledWith("user_id", "user-1");
+  });
+
+  it("limpa somente os itens do usuário autenticado", async () => {
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const del = vi.fn(() => ({ eq }));
+
+    mocks.from.mockReturnValueOnce({ delete: del });
+
+    expect(await clearSupabase("user-9")).toBe(true);
+    expect(eq).toHaveBeenCalledWith("user_id", "user-9");
   });
 });

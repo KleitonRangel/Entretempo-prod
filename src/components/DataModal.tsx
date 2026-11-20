@@ -60,7 +60,7 @@ export function DataModal({
         area.select();
         const ok = document.execCommand("copy");
         document.body.removeChild(area);
-        if (!ok) throw new Error("Cópia bloqueada pelo navegador");
+        if (!ok) throw new Error("Cópia bloqueada pelo sistema");
         markCopied();
       } catch {
         setError("Não foi possível copiar. Use o botão de exportar.");
@@ -139,7 +139,7 @@ export function DataModal({
             </span>
             <span>
               <strong>{copied ? "Copiado!" : "Copiar JSON"}</strong>
-              <small>Útil para colar no Supabase ou guardar em outro lugar.</small>
+              <small>Útil para guardar uma cópia em arquivo ou em outro serviço.</small>
             </span>
             <Icon name="chevronRight" size={16} />
           </button>
@@ -161,9 +161,9 @@ export function DataModal({
         <div className="info-box">
           <Icon name="info" size={16} />
           <p>
-            Tudo fica salvo no <strong>localStorage deste navegador</strong>. Limpar os dados do
-            site apaga a lista, então exporte um backup de vez em quando. O projeto já inclui a
-            estrutura para migrar esses itens para o Supabase.
+            Seus itens ficam salvos na <strong>sua conta</strong> e são sincronizados
+            automaticamente entre dispositivos. Exporte um backup de vez em quando para guardar
+            uma cópia extra.
           </p>
         </div>
 

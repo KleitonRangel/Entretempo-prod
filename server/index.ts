@@ -5,12 +5,32 @@ import { fileURLToPath } from "node:url";
 import { getScreenDetails, searchScreen } from "./providers/cinemeta.js";
 import { searchGames, warmUpHowLongToBeat } from "./providers/hltb.js";
 import { getSeasonCovers } from "./providers/tvmaze.js";
+import { clientIp, createRateLimiter } from "./rate-limit.js";
 
 const app = express();
 const port = Number(process.env.API_PORT || 8787);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const apiLimiter = createRateLimiter({ limit: 240, windowMs: 60_000 });
 
 app.disable("x-powered-by");
+
+app.use((request, response, next) => {
+  response.setHeader("x-content-type-options", "nosniff");
+  response.setHeader("x-frame-options", "DENY");
+  response.setHeader("referrer-policy", "no-referrer");
+  response.setHeader("permissions-policy", "camera=(), microphone=(), geolocation=()");
+
+  if (request.path.startsWith("/api")) {
+    const rate = apiLimiter(clientIp(request.headers));
+    if (!rate.allowed) {
+      response.setHeader("retry-after", String(rate.retryAfter));
+      response.status(429).json({ error: "Muitas requisições. Aguarde alguns segundos." });
+      return;
+    }
+  }
+
+  next();
+});
 
 app.get("/api/health", (_request, response) => {
   response.json({ ok: true, service: "entretempo", time: new Date().toISOString() });
@@ -47,7 +67,7 @@ app.get("/api/search", async (request, response) => {
 });
 
 function isBlockedHost(hostname: string): boolean {
-  const host = hostname.toLowerCase();
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   return (
     host === "localhost" ||
     host.endsWith(".localhost") ||
@@ -57,7 +77,8 @@ function isBlockedHost(hostname: string): boolean {
     /^10\./.test(host) ||
     /^192\.168\./.test(host) ||
     /^169\.254\./.test(host) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host)
   );
 }
 
@@ -147,19 +168,29 @@ async function getImage(url: URL): Promise<CachedImage> {
   return task;
 }
 
+const PLACEHOLDER_SVG = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600">
+  <rect width="400" height="600" fill="#1a1a2e"/>
+  <circle cx="200" cy="250" r="80" fill="none" stroke="#5b4bb7" stroke-width="3"/>
+  <polygon points="180,210 260,250 180,290" fill="#5b4bb7"/>
+  <text x="200" y="400" text-anchor="middle" fill="#8a8abf" font-family="sans-serif" font-size="18">Sem imagem</text>
+</svg>`;
+
 app.get("/api/image", async (request, response) => {
-  const raw = String(request.query.url ?? "");
+  const raw = String(request.query.url ?? "").slice(0, 2048);
 
   try {
     const url = new URL(raw);
 
     if (url.protocol !== "https:" && url.protocol !== "http:") {
-      response.status(400).json({ error: "Endereço de imagem inválido." });
+      response.setHeader("content-type", "image/svg+xml");
+      response.send(PLACEHOLDER_SVG);
       return;
     }
 
     if (isBlockedHost(url.hostname)) {
-      response.status(400).json({ error: "Esse endereço não pode ser usado." });
+      response.setHeader("content-type", "image/svg+xml");
+      response.send(PLACEHOLDER_SVG);
       return;
     }
 
@@ -169,12 +200,10 @@ app.get("/api/image", async (request, response) => {
     response.setHeader("cache-control", "public, max-age=604800, immutable");
     response.send(image.buffer);
   } catch (error) {
-    if (error instanceof ImageResponseError) {
-      response.status(error.status).end();
-      return;
-    }
     console.warn("[image]", error instanceof Error ? error.message : error);
-    response.status(400).end();
+    // Retorna placeholder SVG em vez de 502 — o frontend já mostra fallback com iniciais.
+    response.setHeader("content-type", "image/svg+xml");
+    response.send(PLACEHOLDER_SVG);
   }
 });
 

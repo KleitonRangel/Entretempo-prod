@@ -120,6 +120,30 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M12 11v5M12 7.8h.01" />
     </>
   ),
+  logout: (
+    <>
+      <path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H15" />
+      <path d="M10 8l-4 4 4 4M6 12h9" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2.2" />
+      <path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7M12 14.5v2.5" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2.2" />
+      <path d="m4 7 8 6 8-6" />
+    </>
+  ),
+  user: (
+    <>
+      <circle cx="12" cy="8.5" r="3.7" />
+      <path d="M4.8 20c.7-3.6 3.6-5.7 7.2-5.7s6.5 2.1 7.2 5.7" />
+    </>
+  ),
 };
 
 export function Icon({

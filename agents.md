@@ -73,10 +73,13 @@ git config --global user.email "KleitonRangel@users.noreply.github.com"
 
 1. Configure o Git corretamente (veja seção acima)
 2. Faça **TODAS** as alterações de uma vez
-3. Rode `npm test` — deve passar 58/58
-4. Rode `npx vite build` — deve compilar sem erros
-5. Rode `powershell -ExecutionPolicy Bypass -File validate-deploy.ps1` contra a URL existente
-6. **SOMENTE SE TUDO PASSAR:** `git add . → git commit -m "descrição" → git push --force origin main` (UMA ÚNICA VEZ)
+3. **Crie/adicione testes de regressão para CUALQUER bug corrigido** (veja seção abaixo)
+4. Rode `npm test` — deve passar no total (ex: 58 → 71 após adicionar novos)
+5. Rode `npx vite build` — deve compilar sem erros
+6. Rode `powershell -ExecutionPolicy Bypass -File validate-deploy.ps1` contra a URL existente
+7. **SOMENTE SE TUDO PASSAR:** `git add . → git commit -m "descrição" → git push --force origin main` (UMA ÚNICA VEZ)
+
+> ⚠️ **NUNCA faça deploy sem testes de regressão para bugs corrigidos.** Se mudou lógica que causava crash, o teste deve simular o cenário exato do bug.
 
 ---
 
@@ -96,11 +99,31 @@ git config --global user.email "KleitonRangel@users.noreply.github.com"
 
 ---
 
-## Regressão de Testes
+## Regressão de Testes (OBRIGATÓRIO)
 
-**Sempre que um bug for encontrado e corrigido, crie um teste regressivo correspondente.**
-O teste deve cobrir o caso exato que falhou para garantir que não se repita em futuras alterações.
-Exemplo: quando a API `/api/details` retornava dados sem envolver em `{ details }`, o frontend crashava ao acessar `.runtime`. O bug foi corrigido e um teste regressivo foi adicionado em `server/api-response.test.ts` para validar o formato de resposta da API.
+**REGRAS:**
+1. **Sempre que corrigir um bug, CRIE um teste regressivo ANTES de fazer deploy.**
+2. O teste deve simular o cenário exato do bug (mesmos dados, mesma rota).
+3. O teste deve falhar com o código antigo e passar com o fix.
+4. **NUNCA** faça deploy sem pelo menos um novo teste para cada bug corrigido.
+
+**O QUE SEMPRE TESTAR:**
+- ✅ Respostas de API malformadas (campo faltante, tipo errado) → não devem crashar frontend
+- ✅ JSON parse falhando em status 200 → deve lançar ApiError com mensagem clara
+- ✅ Network error → deve lançar ApiError, não crashar
+- ✅ Dados null/undefined → deve retornar valor padrão seguro
+
+**ONDE COLOCAR:**
+- Bugs de API response format → `server/api-response.test.ts`
+- Bugs de frontend/cliente → `src/lib/<modulo>.test.ts` (criar se não existir)
+- Bugs de storage/parsing → `src/lib/storage.test.ts`
+
+**EXEMPRO PRÁTICO:**
+Quando o bug foi "frontend crashava ao acessar `.runtime` porque API retornava `{ id }` sem `{ details }`":
+1. Bug corrigido em `netlify/functions/api.ts` (wrap em `{ details }`)
+2. Teste criado em `server/api-response.test.ts`: simula resposta sem `details`, verifica que não crasha
+
+> ⚠️ **Se o resumo do chat comprimir esta instrução, ela ainda está no AGENTS.md — leia sempre antes de deploy.**
 
 ---
 

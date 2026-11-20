@@ -285,7 +285,7 @@ function ItemEditor({
               ? "Item de exemplo"
               : item.source
                 ? `Capa e tempos salvos · ${item.source}`
-                : "Dados salvos neste navegador"}
+                : "Sincronizado com sua conta"}
         </p>
       </div>
 
@@ -431,7 +431,7 @@ function ItemEditor({
 
         <p className="autosave-note">
           <Icon name="check" size={12} />
-          Alterações salvas automaticamente neste navegador
+          Alterações sincronizadas automaticamente
         </p>
       </div>
     </div>

@@ -27,7 +27,11 @@ export type IconName =
   | "previous"
   | "next"
   | "info"
-  | "timer";
+  | "timer"
+  | "logout"
+  | "lock"
+  | "mail"
+  | "user";
 
 export const TYPE_META: Record<
   MediaType,

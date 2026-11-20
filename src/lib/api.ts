@@ -17,9 +17,17 @@ async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
     throw new ApiError("Não foi possível falar com o servidor local. Ele está rodando?");
   }
 
-  const data = (await response.json().catch(() => null)) as
-    | (T & { error?: string })
-    | null;
+  let data: (T & { error?: string }) | null = null;
+
+  try {
+    data = await response.json();
+  } catch {
+    // JSON parse failed — treat as server error
+    if (!response.ok) {
+      throw new ApiError("A busca não respondeu agora. Tente novamente.");
+    }
+    throw new ApiError("Formato de resposta inesperado do servidor.");
+  }
 
   if (!response.ok) {
     throw new ApiError(data?.error || "A busca não respondeu agora. Tente novamente.");
@@ -34,8 +42,8 @@ export async function searchTitles(
   signal?: AbortSignal,
 ): Promise<SearchResult[]> {
   const params = new URLSearchParams({ type, q: query });
-  const data = await request<{ results: SearchResult[] }>(`/api/search?${params}`, signal);
-  return data.results;
+  const data = await request<{ results?: SearchResult[] }>(`/api/search?${params}`, signal);
+  return Array.isArray(data?.results) ? data.results : [];
 }
 
 export async function getTitleDetails(
@@ -44,6 +52,20 @@ export async function getTitleDetails(
   signal?: AbortSignal,
 ): Promise<TitleDetails> {
   const params = new URLSearchParams({ type, id });
-  const data = await request<{ details: TitleDetails }>(`/api/details?${params}`, signal);
-  return data.details;
+  const data = await request<{ details?: TitleDetails }>(`/api/details?${params}`, signal);
+  return (
+    data?.details ??
+    ({
+      id: "",
+      type,
+      runtime: null,
+      episodeMinutes: null,
+      episodes: null,
+      seasons: null,
+      seasonEpisodes: [],
+      description: "",
+      genres: [],
+      rating: null,
+    } as TitleDetails)
+  );
 }
